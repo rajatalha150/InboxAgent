@@ -1,0 +1,24 @@
+[Unit]
+Description=Open Email - Privacy-first AI email organization agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/open-email --config-dir /etc/open-email --uid-file /var/lib/open-email/processed_uids.json
+Restart=on-failure
+RestartSec=30
+User=open-email
+Group=open-email
+StateDirectory=open-email
+ConfigurationDirectory=open-email
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=/var/lib/open-email
+
+[Install]
+WantedBy=multi-user.target

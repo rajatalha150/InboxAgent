@@ -1,0 +1,27 @@
+rules:
+  - name: verizon-to-folder
+    match:
+      from: "*@verizon.com"
+    action:
+      move_to: Verizon
+
+  - name: billing-invoices
+    match:
+      subject: ["invoice", "billing", "payment due", "statement"]
+    action:
+      flag: true
+      move_to: Invoices
+
+  - name: delete-spam-promotions
+    match:
+      from: ["noreply@spammer.com"]
+      subject: ["unsubscribe", "limited offer"]
+    action:
+      delete: true
+
+  - name: ai-classify-important
+    match:
+      ai_prompt: "Is this email about a job opportunity or interview?"
+    action:
+      move_to: Jobs
+      flag: true

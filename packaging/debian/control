@@ -1,0 +1,11 @@
+Package: open-email
+Version: 0.1.0
+Section: mail
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.10)
+Maintainer: Open Email Team <dev@open-email.local>
+Description: Privacy-first local AI email organization agent
+ Open Email is a desktop application that automatically organizes
+ your email using configurable rules and optional local AI classification
+ via Ollama. It runs entirely on your machine for maximum privacy.
