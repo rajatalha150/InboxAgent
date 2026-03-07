@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import time
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -82,6 +83,7 @@ class AgentCore:
         self.on_stats_update = None
         self.on_activity = None
         self.on_error = None
+        self.on_error_detail = None
 
     def _emit_state(self, state: str):
         self.agent_state.state = state
@@ -96,9 +98,11 @@ class AgentCore:
         if self.on_activity:
             self.on_activity(msg)
 
-    def _emit_error(self, msg: str):
+    def _emit_error(self, msg: str, detail: str = ""):
         if self.on_error:
             self.on_error(msg)
+        if detail and self.on_error_detail:
+            self.on_error_detail(msg, detail)
 
     @property
     def state(self) -> str:
@@ -123,7 +127,7 @@ class AgentCore:
         except Exception as e:
             msg = f"Failed to load config: {e}"
             logger.error(msg)
-            self._emit_error(msg)
+            self._emit_error(msg, traceback.format_exc())
             self._emit_state(AgentState.ERROR)
             return
 
@@ -140,12 +144,12 @@ class AgentCore:
             except ConnectionError as e:
                 msg = f"Skipping account '{account['name']}': {e}"
                 logger.error(msg)
-                self._emit_error(msg)
+                self._emit_error(msg, traceback.format_exc())
 
         if not clients:
             msg = "No accounts connected successfully."
             logger.error(msg)
-            self._emit_error(msg)
+            self._emit_error(msg, "All account connections failed. Check credentials and server settings.")
             self._emit_state(AgentState.ERROR)
             return
 
@@ -208,7 +212,7 @@ class AgentCore:
         except Exception as e:
             msg = f"[{client.name}] Failed to fetch UIDs: {e}"
             logger.error(msg)
-            self._emit_error(msg)
+            self._emit_error(msg, traceback.format_exc())
             self.stats.errors += 1
             return newly_processed
 
@@ -238,7 +242,8 @@ class AgentCore:
                         self._emit_activity(rule_msg)
                         self.stats.rules_triggered += 1
                         execute_actions(client, uid, match["action"],
-                                        dry_run=self.config.dry_run)
+                                        dry_run=self.config.dry_run,
+                                        parsed_email=parsed)
                 else:
                     logger.debug("[%s] No rules matched UID %d", client.name, uid)
 
@@ -249,7 +254,7 @@ class AgentCore:
             except Exception as e:
                 msg = f"[{client.name}] Error processing UID {uid}: {e}"
                 logger.error(msg)
-                self._emit_error(msg)
+                self._emit_error(msg, traceback.format_exc())
                 self.stats.errors += 1
 
         return newly_processed

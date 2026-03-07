@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-# Build a fully self-contained .deb package for Open Email
+# Build a fully self-contained .deb package for InboxAgent
 # All Python dependencies are bundled — no network needed at install time.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-PKG_NAME="open-email"
+PKG_NAME="inbox-agent"
 VERSION="0.1.0"
 BUILD_DIR="$SCRIPT_DIR/build/${PKG_NAME}_${VERSION}_all"
 
@@ -18,18 +18,18 @@ mkdir -p "$BUILD_DIR"
 
 # --- Build a venv with all dependencies baked in ---
 echo "[1/6] Creating virtual environment and installing dependencies..."
-VENV_DIR="$BUILD_DIR/opt/open-email/venv"
+VENV_DIR="$BUILD_DIR/opt/inbox-agent/venv"
 python3 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip --quiet
 "$VENV_DIR/bin/pip" install imapclient pyyaml ollama PyQt6 --quiet
 
 # --- Install our application into the venv ---
-echo "[2/6] Installing open-email into venv..."
+echo "[2/6] Installing inbox-agent into venv..."
 "$VENV_DIR/bin/pip" install "$PROJECT_DIR" --quiet
 
-# --- Make venv relocatable (fix shebangs and paths to /opt/open-email/venv) ---
+# --- Make venv relocatable (fix shebangs and paths to /opt/inbox-agent/venv) ---
 echo "[3/6] Patching venv paths for target system..."
-TARGET_VENV="/opt/open-email/venv"
+TARGET_VENV="/opt/inbox-agent/venv"
 
 # Fix shebangs in bin/ scripts
 find "$VENV_DIR/bin" -type f -exec grep -l "^#!.*$VENV_DIR" {} \; 2>/dev/null | while read -r f; do
@@ -37,11 +37,11 @@ find "$VENV_DIR/bin" -type f -exec grep -l "^#!.*$VENV_DIR" {} \; 2>/dev/null | 
 done
 
 # Fix pyvenv.cfg
-sed -i "s|$BUILD_DIR/opt/open-email/venv|$TARGET_VENV|g" "$VENV_DIR/pyvenv.cfg" 2>/dev/null || true
+sed -i "s|$BUILD_DIR/opt/inbox-agent/venv|$TARGET_VENV|g" "$VENV_DIR/pyvenv.cfg" 2>/dev/null || true
 
 # Fix the activate scripts
 for activate in "$VENV_DIR/bin/activate" "$VENV_DIR/bin/activate.csh" "$VENV_DIR/bin/activate.fish"; do
-    [ -f "$activate" ] && sed -i "s|$BUILD_DIR/opt/open-email/venv|$TARGET_VENV|g" "$activate"
+    [ -f "$activate" ] && sed -i "s|$BUILD_DIR/opt/inbox-agent/venv|$TARGET_VENV|g" "$activate"
 done
 
 # --- DEBIAN metadata ---
@@ -53,23 +53,23 @@ cp "$SCRIPT_DIR/debian/control" "$BUILD_DIR/DEBIAN/control"
 cat > "$BUILD_DIR/DEBIAN/postinst" << 'POSTINST'
 #!/bin/bash
 set -e
-CONFIG_DIR="/etc/open-email"
+CONFIG_DIR="/etc/inbox-agent"
 if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR"
-    cp /usr/share/open-email/config/*.yaml "$CONFIG_DIR/" 2>/dev/null || true
+    cp /usr/share/inbox-agent/config/*.yaml "$CONFIG_DIR/" 2>/dev/null || true
 fi
-echo "Open Email installed successfully."
-echo "Run 'open-email --gui' to start the application."
+echo "InboxAgent installed successfully."
+echo "Run 'inbox-agent --gui' to start the application."
 POSTINST
 
 cat > "$BUILD_DIR/DEBIAN/prerm" << 'PRERM'
 #!/bin/bash
 set -e
-if systemctl is-active --quiet open-email 2>/dev/null; then
-    systemctl stop open-email
+if systemctl is-active --quiet inbox-agent 2>/dev/null; then
+    systemctl stop inbox-agent
 fi
-if systemctl is-enabled --quiet open-email 2>/dev/null; then
-    systemctl disable open-email
+if systemctl is-enabled --quiet inbox-agent 2>/dev/null; then
+    systemctl disable inbox-agent
 fi
 PRERM
 
@@ -79,30 +79,30 @@ chmod 755 "$BUILD_DIR/DEBIAN/postinst" "$BUILD_DIR/DEBIAN/prerm"
 echo "[5/6] Creating launcher and desktop entry..."
 BIN_DIR="$BUILD_DIR/usr/bin"
 mkdir -p "$BIN_DIR"
-cat > "$BIN_DIR/open-email" << 'WRAPPER'
+cat > "$BIN_DIR/inbox-agent" << 'WRAPPER'
 #!/bin/bash
-exec /opt/open-email/venv/bin/python -m open_email.main "$@"
+exec /opt/inbox-agent/venv/bin/python -m open_email.main "$@"
 WRAPPER
-chmod 755 "$BIN_DIR/open-email"
+chmod 755 "$BIN_DIR/inbox-agent"
 
 # --- Default config files ---
-SHARE_DIR="$BUILD_DIR/usr/share/open-email/config"
+SHARE_DIR="$BUILD_DIR/usr/share/inbox-agent/config"
 mkdir -p "$SHARE_DIR"
 cp "$PROJECT_DIR/config/"*.yaml "$SHARE_DIR/"
 
 # --- systemd service ---
 SYSTEMD_DIR="$BUILD_DIR/lib/systemd/system"
 mkdir -p "$SYSTEMD_DIR"
-cp "$SCRIPT_DIR/open-email.service" "$SYSTEMD_DIR/"
+cp "$SCRIPT_DIR/open-email.service" "$SYSTEMD_DIR/inbox-agent.service"
 
 # --- Desktop entry ---
 APPS_DIR="$BUILD_DIR/usr/share/applications"
 mkdir -p "$APPS_DIR"
-cat > "$APPS_DIR/open-email.desktop" << 'DESKTOP'
+cat > "$APPS_DIR/inbox-agent.desktop" << 'DESKTOP'
 [Desktop Entry]
-Name=Open Email
+Name=InboxAgent
 Comment=Privacy-first local AI email organization agent
-Exec=open-email --gui
+Exec=inbox-agent --gui
 Terminal=false
 Type=Application
 Categories=Network;Email;Utility;
@@ -121,4 +121,4 @@ echo "Size: $(du -h "$DEB_FILE" | cut -f1)"
 echo ""
 echo "Fully self-contained — no internet required at install time."
 echo "Install with:  sudo dpkg -i $DEB_FILE"
-echo "Then run:      open-email --gui"
+echo "Then run:      inbox-agent --gui"

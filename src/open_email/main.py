@@ -1,4 +1,4 @@
-"""Entry point for the open-email agent."""
+"""Entry point for the InboxAgent application."""
 
 import argparse
 import logging
@@ -30,15 +30,15 @@ def launch_gui(config: AgentConfig, minimized: bool = False) -> None:
     try:
         from open_email.gui.app import run_app
     except ImportError as e:
-        print(f"GUI dependencies not installed. Install with: pip install open-email[gui]\nError: {e}", file=sys.stderr)
+        print(f"GUI dependencies not installed. Install with: pip install inbox-agent[gui]\nError: {e}", file=sys.stderr)
         sys.exit(1)
     run_app(config, minimized=minimized)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="open-email",
-        description="Privacy-first local AI email organization agent",
+        prog="inbox-agent",
+        description="InboxAgent - Privacy-first local AI email organization agent",
     )
     parser.add_argument(
         "--config-dir", default="config",

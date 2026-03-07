@@ -77,6 +77,42 @@ class TestLabelAction:
         client.add_label.assert_called_once_with(1, "Important")
 
 
+class TestAutoSortBySender:
+    def _make_parsed(self, from_addr):
+        parsed = MagicMock()
+        parsed.from_addr = from_addr
+        return parsed
+
+    def test_auto_sort_moves_to_sender_folder(self):
+        client = _make_client()
+        parsed = self._make_parsed("John Doe <john@example.com>")
+        execute_actions(client, uid=1, action={"auto_sort_by_sender": True}, parsed_email=parsed)
+        client.move_email.assert_called_once_with(1, "john@example.com")
+
+    def test_auto_sort_bare_email(self):
+        client = _make_client()
+        parsed = self._make_parsed("john@example.com")
+        execute_actions(client, uid=1, action={"auto_sort_by_sender": True}, parsed_email=parsed)
+        client.move_email.assert_called_once_with(1, "john@example.com")
+
+    def test_auto_sort_empty_sender_skips(self):
+        client = _make_client()
+        parsed = self._make_parsed("")
+        execute_actions(client, uid=1, action={"auto_sort_by_sender": True}, parsed_email=parsed)
+        client.move_email.assert_not_called()
+
+    def test_auto_sort_no_parsed_email_skips(self):
+        client = _make_client()
+        execute_actions(client, uid=1, action={"auto_sort_by_sender": True})
+        client.move_email.assert_not_called()
+
+    def test_auto_sort_dry_run(self):
+        client = _make_client()
+        parsed = self._make_parsed("John <john@example.com>")
+        execute_actions(client, uid=1, action={"auto_sort_by_sender": True}, dry_run=True, parsed_email=parsed)
+        client.move_email.assert_not_called()
+
+
 class TestCombinedActions:
     def test_move_and_flag(self):
         client = _make_client()

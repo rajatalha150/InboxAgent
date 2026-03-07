@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         self._agent_thread: AgentThread | None = None
         self._really_quit = False
 
-        self.setWindowTitle("Open Email")
+        self.setWindowTitle("InboxAgent")
         self.setMinimumSize(QSize(800, 600))
         self.setWindowIcon(_create_app_icon())
 
@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
     def _setup_tray(self):
         """Set up the system tray icon and menu."""
         self._tray_icon = QSystemTrayIcon(_create_app_icon(), self)
-        self._tray_icon.setToolTip("Open Email")
+        self._tray_icon.setToolTip("InboxAgent")
 
         tray_menu = QMenu()
 
@@ -133,6 +133,7 @@ class MainWindow(QMainWindow):
         self._agent_thread.stats_updated.connect(self._dashboard_tab.update_stats)
         self._agent_thread.activity.connect(self._dashboard_tab.add_activity)
         self._agent_thread.error.connect(self._dashboard_tab.add_error)
+        self._agent_thread.error_detail.connect(self._dashboard_tab.add_error)
         self._agent_thread.start()
 
     def _stop_agent(self):
@@ -144,7 +145,7 @@ class MainWindow(QMainWindow):
         running = state == "running"
         self._tray_start_action.setEnabled(not running)
         self._tray_stop_action.setEnabled(running)
-        self._tray_icon.setToolTip(f"Open Email - {state.capitalize()}")
+        self._tray_icon.setToolTip(f"InboxAgent - {state.capitalize()}")
 
     def _on_config_changed(self, new_config: AgentConfig):
         self.config = new_config
@@ -157,7 +158,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             self.hide()
             self._tray_icon.showMessage(
-                "Open Email",
+                "InboxAgent",
                 "Application minimized to tray. Right-click tray icon to quit.",
                 QSystemTrayIcon.MessageIcon.Information,
                 2000,
@@ -180,7 +181,7 @@ class MainWindow(QMainWindow):
 def run_app(config: AgentConfig, minimized: bool = False):
     """Entry point for launching the GUI."""
     app = QApplication(sys.argv)
-    app.setApplicationName("Open Email")
+    app.setApplicationName("InboxAgent")
     app.setQuitOnLastWindowClosed(False)
 
     window = MainWindow(config, minimized=minimized)

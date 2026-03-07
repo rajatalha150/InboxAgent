@@ -12,6 +12,7 @@ class AgentThread(QThread):
     stats_updated = pyqtSignal(object)  # AgentStats
     activity = pyqtSignal(str)
     error = pyqtSignal(str)
+    error_detail = pyqtSignal(str, str)
 
     def __init__(self, config: AgentConfig, parent=None):
         super().__init__(parent)
@@ -24,6 +25,7 @@ class AgentThread(QThread):
         self._core.on_stats_update = self.stats_updated.emit
         self._core.on_activity = self.activity.emit
         self._core.on_error = self.error.emit
+        self._core.on_error_detail = lambda s, d: self.error_detail.emit(s, d)
         self._core.run()
 
     def request_stop(self):

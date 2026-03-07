@@ -4,15 +4,16 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout,
-    QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QFrame,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
+    QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from open_email.agent_core import AgentConfig
 from open_email.config_loader import load_rules, save_rules
 
 COLUMNS = ["Name", "Match", "Action"]
+AUTO_SORT_RULE_NAME = "auto-sort-by-sender"
 
 
 def _summarize_match(match: dict) -> str:
@@ -40,6 +41,8 @@ def _summarize_action(action: dict) -> str:
         parts.append("mark_unread")
     if "label" in action:
         parts.append(f"label: {action['label']}")
+    if action.get("auto_sort_by_sender"):
+        parts.append("auto_sort_by_sender")
     return "; ".join(parts)
 
 
@@ -100,6 +103,9 @@ class RuleDialog(QDialog):
         self._label.setPlaceholderText("Gmail label")
         layout.addRow("Label:", self._label)
 
+        self._auto_sort_by_sender = QCheckBox()
+        layout.addRow("Auto-Sort by Sender:", self._auto_sort_by_sender)
+
         # Populate if editing
         if rule:
             self._name.setText(rule.get("name", ""))
@@ -117,6 +123,7 @@ class RuleDialog(QDialog):
             self._mark_read.setChecked(action.get("mark_read", False))
             self._mark_unread.setChecked(action.get("mark_unread", False))
             self._label.setText(action.get("label", ""))
+            self._auto_sort_by_sender.setChecked(action.get("auto_sort_by_sender", False))
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -165,6 +172,7 @@ class RuleDialog(QDialog):
             self._mark_read.isChecked(),
             self._mark_unread.isChecked(),
             self._label.text().strip(),
+            self._auto_sort_by_sender.isChecked(),
         ])
         if not has_action:
             QMessageBox.warning(self, "Validation", "At least one action is required.")
@@ -196,6 +204,8 @@ class RuleDialog(QDialog):
             action["mark_unread"] = True
         if self._label.text().strip():
             action["label"] = self._label.text().strip()
+        if self._auto_sort_by_sender.isChecked():
+            action["auto_sort_by_sender"] = True
 
         return {
             "name": self._name.text().strip(),
@@ -214,6 +224,36 @@ class RulesTab(QWidget):
         self._rules: list[dict] = []
 
         layout = QVBoxLayout(self)
+
+        # Auto-sort panel
+        auto_sort_frame = QFrame()
+        auto_sort_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        auto_sort_frame.setStyleSheet(
+            "QFrame { background-color: #f0f7ff; border: 1px solid #b0d0f0;"
+            " border-radius: 6px; padding: 8px; }"
+        )
+        auto_sort_layout = QVBoxLayout(auto_sort_frame)
+        auto_sort_layout.setContentsMargins(10, 8, 10, 8)
+
+        header_row = QHBoxLayout()
+        auto_sort_label = QLabel("<b>Auto-Sort by Sender</b>")
+        header_row.addWidget(auto_sort_label)
+        header_row.addStretch()
+        self._auto_sort_toggle = QCheckBox("Enable")
+        self._auto_sort_toggle.toggled.connect(self._on_auto_sort_toggled)
+        header_row.addWidget(self._auto_sort_toggle)
+        auto_sort_layout.addLayout(header_row)
+
+        desc = QLabel(
+            "Automatically move emails into folders named after the sender's "
+            "email address. Only applies when no other rule matches. "
+            "Folders are created on the mail server if they don't exist."
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #555; font-size: 12px;")
+        auto_sort_layout.addWidget(desc)
+
+        layout.addWidget(auto_sort_frame)
 
         # Toolbar
         toolbar = QHBoxLayout()
@@ -248,11 +288,21 @@ class RulesTab(QWidget):
             self._rules = load_rules(self._rules_path)
         except Exception:
             self._rules = []
+        # Sync toggle state (block signals to avoid re-triggering _on_auto_sort_toggled)
+        has_auto_sort = any(r["name"] == AUTO_SORT_RULE_NAME for r in self._rules)
+        self._auto_sort_toggle.blockSignals(True)
+        self._auto_sort_toggle.setChecked(has_auto_sort)
+        self._auto_sort_toggle.blockSignals(False)
         self._refresh_table()
 
+    def _user_rules(self) -> list[dict]:
+        """Return rules excluding the auto-sort rule."""
+        return [r for r in self._rules if r["name"] != AUTO_SORT_RULE_NAME]
+
     def _refresh_table(self):
-        self._table.setRowCount(len(self._rules))
-        for row, rule in enumerate(self._rules):
+        visible = self._user_rules()
+        self._table.setRowCount(len(visible))
+        for row, rule in enumerate(visible):
             self._table.setItem(row, 0, QTableWidgetItem(rule["name"]))
             self._table.setItem(row, 1, QTableWidgetItem(_summarize_match(rule["match"])))
             self._table.setItem(row, 2, QTableWidgetItem(_summarize_action(rule["action"])))
@@ -260,10 +310,33 @@ class RulesTab(QWidget):
     def _save(self):
         save_rules(self._rules_path, self._rules)
 
+    def _on_auto_sort_toggled(self, checked: bool):
+        """Add or remove the auto-sort rule based on toggle state."""
+        # Remove existing auto-sort rule if present
+        self._rules = [r for r in self._rules if r["name"] != AUTO_SORT_RULE_NAME]
+        if checked:
+            # Append as last rule (catch-all)
+            self._rules.append({
+                "name": AUTO_SORT_RULE_NAME,
+                "match": {"from": "*"},
+                "action": {"auto_sort_by_sender": True},
+            })
+        self._save()
+        self._refresh_table()
+
     def _add_rule(self):
         dlg = RuleDialog(parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._rules.append(dlg.get_rule())
+            new_rule = dlg.get_rule()
+            # Insert before auto-sort rule if present (keep auto-sort last)
+            auto_sort_idx = next(
+                (i for i, r in enumerate(self._rules) if r["name"] == AUTO_SORT_RULE_NAME),
+                None,
+            )
+            if auto_sort_idx is not None:
+                self._rules.insert(auto_sort_idx, new_rule)
+            else:
+                self._rules.append(new_rule)
             self._save()
             self._refresh_table()
 
@@ -271,9 +344,12 @@ class RulesTab(QWidget):
         row = self._table.currentRow()
         if row < 0:
             return
-        dlg = RuleDialog(rule=self._rules[row], parent=self)
+        visible = self._user_rules()
+        rule = visible[row]
+        real_idx = self._rules.index(rule)
+        dlg = RuleDialog(rule=rule, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._rules[row] = dlg.get_rule()
+            self._rules[real_idx] = dlg.get_rule()
             self._save()
             self._refresh_table()
 
@@ -281,12 +357,15 @@ class RulesTab(QWidget):
         row = self._table.currentRow()
         if row < 0:
             return
-        name = self._rules[row]["name"]
+        visible = self._user_rules()
+        rule = visible[row]
+        real_idx = self._rules.index(rule)
+        name = rule["name"]
         reply = QMessageBox.question(
             self, "Confirm", f"Remove rule '{name}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            self._rules.pop(row)
+            self._rules.pop(real_idx)
             self._save()
             self._refresh_table()

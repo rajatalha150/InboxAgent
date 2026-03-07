@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-VENV_DIR="/opt/open-email/venv"
-CONFIG_DIR="/etc/open-email"
+VENV_DIR="/opt/inbox-agent/venv"
+CONFIG_DIR="/etc/inbox-agent"
 
 # Create virtual environment and install dependencies
 python3 -m venv "$VENV_DIR"
@@ -12,8 +12,8 @@ python3 -m venv "$VENV_DIR"
 # Create default config directory if it doesn't exist
 if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR"
-    cp /usr/share/open-email/config/*.yaml "$CONFIG_DIR/" 2>/dev/null || true
+    cp /usr/share/inbox-agent/config/*.yaml "$CONFIG_DIR/" 2>/dev/null || true
 fi
 
-echo "Open Email installed successfully."
-echo "Run 'open-email --gui' to start the application."
+echo "InboxAgent installed successfully."
+echo "Run 'inbox-agent --gui' to start the application."

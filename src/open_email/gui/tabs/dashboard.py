@@ -1,15 +1,36 @@
 """Dashboard tab: status indicator, start/stop, stats, activity log."""
 
+from datetime import datetime
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QVBoxLayout, QWidget,
+    QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+    QPushButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
 from open_email.agent_core import AgentState, AgentStats
 
 MAX_ACTIVITY_ITEMS = 200
+
+# Category definitions: (key, label, dot_unicode, color)
+CATEGORIES = {
+    "connection": ("Connection", "\U0001f535", QColor(30, 144, 255)),   # blue dot
+    "processing": ("Processing", "\u26aa", QColor(160, 160, 160)),      # gray dot
+    "rule":       ("Rule", "\U0001f7e2", QColor(50, 180, 50)),          # green dot
+    "error":      ("Error", "\U0001f534", QColor(220, 50, 50)),         # red dot
+}
+
+
+def _detect_category(message: str) -> str:
+    """Auto-detect activity category from message text patterns."""
+    if message.lstrip("[").split("]", 1)[-1].strip().startswith("Connected to"):
+        return "connection"
+    if "Processing:" in message:
+        return "processing"
+    if "Rule '" in message and "triggered" in message:
+        return "rule"
+    return "processing"  # default fallback
 
 
 class DashboardTab(QWidget):
@@ -87,13 +108,42 @@ class DashboardTab(QWidget):
 
         layout.addWidget(stats_frame)
 
-        # --- Activity log ---
+        # --- Activity header + toolbar ---
         activity_label = QLabel("Recent Activity")
         activity_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         layout.addWidget(activity_label)
 
-        self._activity_list = QListWidget()
-        layout.addWidget(self._activity_list, stretch=1)
+        toolbar = QHBoxLayout()
+
+        self._filter_combo = QComboBox()
+        self._filter_combo.addItems(["All", "Connections", "Processing", "Rules", "Errors"])
+        self._filter_combo.setMinimumWidth(120)
+        self._filter_combo.currentIndexChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._filter_combo)
+
+        self._search_box = QLineEdit()
+        self._search_box.setPlaceholderText("Search...")
+        self._search_box.textChanged.connect(self._apply_filters)
+        toolbar.addWidget(self._search_box)
+
+        clear_btn = QPushButton("Clear")
+        clear_btn.clicked.connect(self._clear_activity)
+        toolbar.addWidget(clear_btn)
+
+        layout.addLayout(toolbar)
+
+        # --- Activity tree ---
+        self._activity_tree = QTreeWidget()
+        self._activity_tree.setHeaderLabels(["Time", "Category", "Message"])
+        self._activity_tree.setColumnWidth(0, 140)
+        self._activity_tree.setColumnWidth(1, 100)
+        self._activity_tree.setRootIsDecorated(True)
+        self._activity_tree.setAlternatingRowColors(True)
+        self._activity_tree.doubleClicked.connect(self._on_double_click)
+        layout.addWidget(self._activity_tree, stretch=1)
+
+        # Internal store: list of dicts for filtering
+        self._entries: list[dict] = []
 
     def update_state(self, state: str):
         """Update the status indicator."""
@@ -125,19 +175,121 @@ class DashboardTab(QWidget):
         self._stat_labels["cycles"].setText(str(stats.cycles_completed))
 
     def add_activity(self, message: str):
-        """Add an activity message to the list."""
-        item = QListWidgetItem(message)
-        self._activity_list.insertItem(0, item)
-        if self._activity_list.count() > MAX_ACTIVITY_ITEMS:
-            self._activity_list.takeItem(self._activity_list.count() - 1)
+        """Add an activity message, auto-detecting category."""
+        category = _detect_category(message)
+        self._add_entry(category, message)
 
-    def add_error(self, message: str):
-        """Add an error message to the activity list in red."""
-        item = QListWidgetItem(message)
-        item.setForeground(QColor("red"))
-        self._activity_list.insertItem(0, item)
-        if self._activity_list.count() > MAX_ACTIVITY_ITEMS:
-            self._activity_list.takeItem(self._activity_list.count() - 1)
+    def add_error(self, message: str, detail: str = ""):
+        """Add an error message with optional extended detail."""
+        self._add_entry("error", message, detail)
+
+    def _add_entry(self, category: str, message: str, detail: str = ""):
+        """Core method to add an activity entry."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        entry = {
+            "category": category,
+            "message": message,
+            "detail": detail,
+            "timestamp": timestamp,
+        }
+
+        self._entries.insert(0, entry)
+        if len(self._entries) > MAX_ACTIVITY_ITEMS:
+            self._entries.pop()
+
+        if self._entry_matches_filter(entry):
+            self._insert_tree_item(entry, position=0)
+            # Trim visible items
+            while self._activity_tree.topLevelItemCount() > MAX_ACTIVITY_ITEMS:
+                self._activity_tree.takeTopLevelItem(
+                    self._activity_tree.topLevelItemCount() - 1
+                )
+
+    def _insert_tree_item(self, entry: dict, position: int = 0):
+        """Create and insert a QTreeWidgetItem for an entry."""
+        cat_key = entry["category"]
+        cat_label, dot, color = CATEGORIES.get(
+            cat_key, ("Unknown", "\u26aa", QColor(128, 128, 128))
+        )
+
+        item = QTreeWidgetItem()
+        item.setText(0, f"{dot} {entry['timestamp']}")
+        item.setText(1, cat_label)
+        item.setText(2, entry["message"])
+        item.setForeground(0, color)
+        item.setForeground(1, color)
+
+        if cat_key == "error":
+            item.setForeground(2, QColor(220, 50, 50))
+
+        # Store detail for double-click
+        item.setData(0, Qt.ItemDataRole.UserRole, entry.get("detail", ""))
+
+        # Add expandable child for error detail
+        if entry.get("detail"):
+            child = QTreeWidgetItem(item)
+            child.setText(0, "  \u2514 Details:")
+            detail_preview = entry["detail"].strip().split("\n")[-1][:120]
+            child.setText(2, detail_preview)
+            child.setForeground(0, QColor(160, 160, 160))
+            child.setForeground(2, QColor(160, 160, 160))
+
+        self._activity_tree.insertTopLevelItem(position, item)
+
+    def _entry_matches_filter(self, entry: dict) -> bool:
+        """Check if an entry matches the current filter and search."""
+        # Category filter
+        filter_idx = self._filter_combo.currentIndex()
+        filter_map = {0: None, 1: "connection", 2: "processing", 3: "rule", 4: "error"}
+        required_cat = filter_map.get(filter_idx)
+        if required_cat and entry["category"] != required_cat:
+            return False
+
+        # Text search
+        search_text = self._search_box.text().strip().lower()
+        if search_text and search_text not in entry["message"].lower():
+            return False
+
+        return True
+
+    def _apply_filters(self):
+        """Re-populate the tree based on current filter/search settings."""
+        self._activity_tree.clear()
+        for entry in self._entries:
+            if self._entry_matches_filter(entry):
+                self._insert_tree_item(
+                    entry, position=self._activity_tree.topLevelItemCount()
+                )
+
+    def _on_double_click(self, index):
+        """Show error detail in a popup on double-click."""
+        item = self._activity_tree.currentItem()
+        if not item:
+            return
+        # If it's a child item, use parent
+        parent = item.parent()
+        if parent:
+            item = parent
+
+        detail = item.data(0, Qt.ItemDataRole.UserRole)
+        if not detail:
+            return
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Error Detail")
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setText(item.text(2))
+        msg_box.setDetailedText(detail)
+        msg_box.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        msg_box.exec()
+
+    def _clear_activity(self):
+        """Clear all activity entries."""
+        self._entries.clear()
+        self._activity_tree.clear()
 
     def show_restart_warning(self):
         """Show the restart-needed banner."""

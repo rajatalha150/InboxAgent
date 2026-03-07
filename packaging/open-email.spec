@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec file for Open Email."""
+"""PyInstaller spec file for InboxAgent."""
 
 import sys
 from pathlib import Path
@@ -53,7 +53,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="open-email",
+    name="inbox-agent",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

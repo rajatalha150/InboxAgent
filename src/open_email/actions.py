@@ -1,5 +1,6 @@
 """Execute email actions (move, flag, delete, etc.)."""
 
+import email.utils
 import logging
 
 from open_email.imap_client import EmailClient
@@ -12,6 +13,7 @@ def execute_actions(
     uid: int,
     action: dict,
     dry_run: bool = False,
+    parsed_email=None,
 ) -> None:
     """Execute the actions defined in a matched rule.
 
@@ -20,6 +22,7 @@ def execute_actions(
         uid: The email UID to act on.
         action: Action dict from the matched rule.
         dry_run: If True, log actions without executing them.
+        parsed_email: The parsed email object (needed for auto_sort_by_sender).
     """
     if action.get("delete"):
         if dry_run:
@@ -60,3 +63,11 @@ def execute_actions(
             logger.info("[DRY RUN] Would add label '%s' to UID %d", label, uid)
         else:
             client.add_label(uid, label)
+
+    if action.get("auto_sort_by_sender") and parsed_email:
+        _, sender_email = email.utils.parseaddr(parsed_email.from_addr)
+        if sender_email:
+            if dry_run:
+                logger.info("[DRY RUN] Would auto-sort UID %d to folder '%s'", uid, sender_email)
+            else:
+                client.move_email(uid, sender_email)

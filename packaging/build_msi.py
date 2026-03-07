@@ -26,23 +26,23 @@ build_exe_options = {
 bdist_msi_options = {
     "upgrade_code": "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}",
     "add_to_path": True,
-    "initial_target_dir": r"[ProgramFilesFolder]\OpenEmail",
+    "initial_target_dir": r"[ProgramFilesFolder]\InboxAgent",
 }
 
 executables = [
     Executable(
         script=str(src_path / "open_email" / "main.py"),
         base="Win32GUI" if sys.platform == "win32" else None,
-        target_name="open-email",
-        shortcut_name="Open Email",
+        target_name="inbox-agent",
+        shortcut_name="InboxAgent",
         shortcut_dir="DesktopFolder",
     )
 ]
 
 setup(
-    name="Open Email",
+    name="InboxAgent",
     version="0.1.0",
-    description="Privacy-first local AI email organization agent",
+    description="InboxAgent - Privacy-first local AI email organization agent",
     options={
         "build_exe": build_exe_options,
         "bdist_msi": bdist_msi_options,
