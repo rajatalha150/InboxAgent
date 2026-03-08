@@ -30,7 +30,17 @@ def launch_gui(config: AgentConfig, minimized: bool = False) -> None:
     try:
         from open_email.gui.app import run_app
     except ImportError as e:
-        print(f"GUI dependencies not installed. Install with: pip install inbox-agent[gui]\nError: {e}", file=sys.stderr)
+        msg = f"GUI dependencies not installed or DLL load failed.\nError: {e}\n\nPlease install: pip install inbox-agent[gui]"
+        print(msg, file=sys.stderr)
+        
+        # Keep terminal open if frozen so user can read it
+        if getattr(sys, 'frozen', False):
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(0, msg, "InboxAgent Boot Error", 0x10)
+            except:
+                import time
+                time.sleep(15)
         sys.exit(1)
     run_app(config, minimized=minimized)
 
@@ -114,7 +124,14 @@ def main_gui():
 
 if __name__ == "__main__":
     import sys
+    import os
     # If compiled as frozen exe and double-clicked (no args), auto-launch GUI
-    if getattr(sys, 'frozen', False) and len(sys.argv) == 1:
-        sys.argv.append("--gui")
+    if getattr(sys, 'frozen', False):
+        # Explicitly register PyQt6 dll path to help Windows loader
+        pyqt_bin = os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(sys.executable)), 'PyQt6', 'Qt6', 'bin')
+        if os.path.exists(pyqt_bin):
+            os.add_dll_directory(pyqt_bin)
+            
+        if len(sys.argv) == 1:
+            sys.argv.append("--gui")
     main()

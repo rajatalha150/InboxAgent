@@ -10,10 +10,7 @@ src_path = Path("..") / "src"
 
 a = Analysis(
     [str(src_path / "open_email" / "main.py")],
-    pathex=[
-        str(src_path),
-        r"C:\Python\Lib\site-packages\PyQt6\Qt6\bin"
-    ],
+    pathex=[str(src_path)],
     binaries=[],
     datas=[
         (str(Path("..") / "config"), "config"),
@@ -33,13 +30,10 @@ a = Analysis(
         "open_email.config_loader",
         "open_email.email_parser",
         "open_email.imap_client",
+        "imapclient",
         "open_email.rule_engine",
         "open_email.actions",
         "open_email.ai_classifier",
-        "PyQt6",
-        "PyQt6.QtCore",
-        "PyQt6.QtGui",
-        "PyQt6.QtWidgets",
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,18 +50,14 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+    [],
     exclude_binaries=True,
     name="inbox-agent",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,  # Ensure errors are visible in terminal
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

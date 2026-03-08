@@ -18,7 +18,7 @@ dev = [
     "pytest>=7.0",
 ]
 gui = [
-    "PyQt6>=6.6.0",
+    "PyQt6>=6.6.0,<6.10.0",
 ]
 packaging = [
     "pyinstaller>=6.0",
