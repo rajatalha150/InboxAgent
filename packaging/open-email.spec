@@ -10,7 +10,10 @@ src_path = Path("..") / "src"
 
 a = Analysis(
     [str(src_path / "open_email" / "main.py")],
-    pathex=[str(src_path)],
+    pathex=[
+        str(src_path),
+        r"C:\Python\Lib\site-packages\PyQt6\Qt6\bin"
+    ],
     binaries=[],
     datas=[
         (str(Path("..") / "config"), "config"),
