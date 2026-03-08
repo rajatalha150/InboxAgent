@@ -113,4 +113,8 @@ def main_gui():
 
 
 if __name__ == "__main__":
+    import sys
+    # If compiled as frozen exe and double-clicked (no args), auto-launch GUI
+    if getattr(sys, 'frozen', False) and len(sys.argv) == 1:
+        sys.argv.append("--gui")
     main()

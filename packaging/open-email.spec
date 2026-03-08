@@ -33,6 +33,10 @@ a = Analysis(
         "open_email.rule_engine",
         "open_email.actions",
         "open_email.ai_classifier",
+        "PyQt6",
+        "PyQt6.QtCore",
+        "PyQt6.QtGui",
+        "PyQt6.QtWidgets",
     ],
     hookspath=[],
     hooksconfig={},
@@ -60,7 +64,7 @@ exe = EXE(
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # GUI app, no console window
+    console=True,  # Ensure errors are visible in terminal
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
