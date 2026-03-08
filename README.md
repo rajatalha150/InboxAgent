@@ -26,6 +26,9 @@ pip install .              # Install CLI backend only
 pip install ".[gui]"       # Install Desktop Application
 ```
 
+### Windows Compilation
+If you wish to compile the application and bundle the setup `.exe` installer directly on Windows, please refer to the [Windows Build Guide](WINDOWS_BUILD_GUIDE.md).
+
 ## Getting Started
 To get started, simply configure your email credentials (such as your Gmail App Password) and begin writing your first automated routing rules.
 
