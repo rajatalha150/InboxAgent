@@ -290,6 +290,12 @@ QHeaderView::section {
     border-bottom: 1px solid #333333;
     font-weight: bold;
 }
+QTableCornerButton::section {
+    background-color: #2b2b2b;
+    border: none;
+    border-right: 1px solid #333333;
+    border-bottom: 1px solid #333333;
+}
 
 /* Text Edit / Logs */
 QTextEdit, QPlainTextEdit {
