@@ -36,10 +36,12 @@ class SettingsTab(QWidget):
         agent_form.addRow(
             create_field_label(
                 "Poll Interval:",
-                "Poll Interval",
-                "How frequently InboxAgent should check your email accounts for new messages. "
-                "Settings this too low may cause you to be rate-limited by your email provider. "
-                "60-120 seconds is generally recommended."
+                "Poll Interval & Cycles",
+                "How frequently InboxAgent checks your email. "
+                "Once the agent scans all connected accounts, it completes one 'Cycle' and "
+                "enters a sleep phase for this exact Poll Interval length. "
+                "Because it sleeps in 1-second ticks, clicking 'Stop Agent' immediately "
+                "interrupts the wait time. Setting this interval too low (<60s) may cause your provider to permanently rate-limit your account."
             ),
             self._interval
         )

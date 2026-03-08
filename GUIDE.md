@@ -420,7 +420,7 @@ Here is what happens when InboxAgent runs:
 
    f. **Record as processed** — the email UID is saved so it won't be processed again.
 
-4. **Repeat** — the loop continues until you stop the agent or the application exits.
+4. **Poll Cycles** — After scanning all accounts, a "Cycle" is completed. The agent enters a sleep interval (e.g., 60s) counting in 1-second ticks. This prevents rate-limiting and allows instant interrupts if "Stop Agent" is clicked.
 
 5. **Graceful shutdown** — on stop (or Ctrl+C in CLI mode), InboxAgent finishes its current operation, disconnects from all email servers, and exits cleanly.
 

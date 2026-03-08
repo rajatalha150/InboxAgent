@@ -17,19 +17,22 @@ class InfoButton(QPushButton):
         
         self.setStyleSheet("""
             QPushButton#InfoButton {
-                background-color: #3a82f7;
-                color: #ffffff;
+                background-color: transparent;
+                color: #888888;
+                border: 1px solid #444444;
                 border-radius: 10px;
-                font-weight: 900;
-                font-family: "Segoe UI", Arial, sans-serif;
-                font-size: 14px;
-                border: none;
-                margin: 0px;
+                font-weight: bold;
+                font-family: monospace;
+                font-size: 13px;
                 text-align: center;
+                padding: 0px;
+                margin: 0px;
                 padding-bottom: 2px;
             }
             QPushButton#InfoButton:hover {
-                background-color: #5596fb;
+                color: #ffffff;
+                border: 1px solid #3a82f7;
+                background-color: #2b2b2b;
             }
         """)
         self.clicked.connect(self.show_info)

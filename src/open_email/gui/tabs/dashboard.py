@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 
 from open_email.agent_core import AgentState, AgentStats
+from open_email.gui.widgets.ui_helpers import InfoButton
 
 MAX_ACTIVITY_ITEMS = 200
 
@@ -101,10 +102,22 @@ class DashboardTab(QWidget):
             count = QLabel("0")
             count.setFont(QFont("Arial", 18, QFont.Weight.Bold))
             count.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            desc_layout = QHBoxLayout()
             desc = QLabel(label)
             desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            desc_layout.addStretch()
+            desc_layout.addWidget(desc)
+            if key == "cycles":
+                info = InfoButton(
+                    "Cycles & Polling",
+                    "A Cycle is completed when all of your email accounts have been successfully scanned and rules executed.\n\n"
+                    "Between Cycles, the Agent enters a background Sleep mode determined by your Poll Interval (in Settings)."
+                )
+                desc_layout.addWidget(info)
+            desc_layout.addStretch()
+            
             vbox.addWidget(count)
-            vbox.addWidget(desc)
+            vbox.addLayout(desc_layout)
             stats_layout.addLayout(vbox)
             self._stat_labels[key] = count
 
