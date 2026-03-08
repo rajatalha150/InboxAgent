@@ -52,12 +52,12 @@ exe = EXE(
     a.binaries,
     a.zipfiles,
     a.datas,
-    [],
+    exclude_binaries=True,
     name="inbox-agent",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,  # GUI app, no console window
@@ -66,4 +66,15 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='inbox-agent'
 )

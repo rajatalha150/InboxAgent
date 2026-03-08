@@ -40,9 +40,15 @@ def main():
         prog="inbox-agent",
         description="InboxAgent - Privacy-first local AI email organization agent",
     )
+    import os
+    if getattr(sys, 'frozen', False):
+        default_config = os.path.join(getattr(sys, '_MEIPASS', os.path.dirname(sys.executable)), "config")
+    else:
+        default_config = "config"
+        
     parser.add_argument(
-        "--config-dir", default="config",
-        help="Path to config directory (default: config/)",
+        "--config-dir", default=default_config,
+        help=f"Path to config directory (default: {default_config})",
     )
     parser.add_argument(
         "--interval", type=int, default=60,
