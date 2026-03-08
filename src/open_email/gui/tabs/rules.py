@@ -4,13 +4,14 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QFrame,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
     QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from open_email.agent_core import AgentConfig
 from open_email.config_loader import load_rules, save_rules
+from open_email.gui.widgets.ui_helpers import create_field_label
 
 COLUMNS = ["Name", "Match", "Action"]
 AUTO_SORT_RULE_NAME = "auto-sort-by-sender"
@@ -41,8 +42,12 @@ def _summarize_action(action: dict) -> str:
         parts.append("mark_unread")
     if "label" in action:
         parts.append(f"label: {action['label']}")
-    if action.get("auto_sort_by_sender"):
-        parts.append("auto_sort_by_sender")
+    if "auto_sort_by_sender" in action:
+        val = action["auto_sort_by_sender"]
+        if isinstance(val, dict):
+            parts.append(f"auto_sort_by_sender: {val.get('strategy', 'full_email')}")
+        else:
+            parts.append("auto_sort_by_sender")
     return "; ".join(parts)
 
 
@@ -57,54 +62,54 @@ class RuleDialog(QDialog):
         layout = QFormLayout(self)
 
         self._name = QLineEdit()
-        layout.addRow("Rule Name:", self._name)
+        layout.addRow(create_field_label("Rule Name:", "Rule Name", "A descriptive, unique name for your rule."), self._name)
 
         # Match fields
-        layout.addRow(QLabel("--- Match Conditions ---"))
+        layout.addRow(QLabel("<b>--- Match Conditions ---</b>"))
         self._from = QLineEdit()
         self._from.setPlaceholderText("e.g. *@domain.com or user@example.com")
-        layout.addRow("From:", self._from)
+        layout.addRow(create_field_label("From:", "From (Sender)", "Matches the sender's email. Supports globs like *@company.com."), self._from)
 
         self._to = QLineEdit()
         self._to.setPlaceholderText("e.g. me@example.com")
-        layout.addRow("To:", self._to)
+        layout.addRow(create_field_label("To:", "To (Recipient)", "Matches the recipient's email. Supports globs."), self._to)
 
         self._subject = QLineEdit()
         self._subject.setPlaceholderText("Comma-separated keywords")
-        layout.addRow("Subject:", self._subject)
+        layout.addRow(create_field_label("Subject:", "Subject Matches", "Matches if ANY of these comma-separated keywords appear in the subject."), self._subject)
 
         self._body = QLineEdit()
         self._body.setPlaceholderText("Comma-separated keywords")
-        layout.addRow("Body:", self._body)
+        layout.addRow(create_field_label("Body:", "Body Matches", "Matches if ANY of these comma-separated keywords appear in the email body."), self._body)
 
         self._ai_prompt = QLineEdit()
         self._ai_prompt.setPlaceholderText("AI question about the email")
-        layout.addRow("AI Prompt:", self._ai_prompt)
+        layout.addRow(create_field_label("AI Prompt:", "AI Classifier Prompt", "A yes/no question asked to the local AI. If the AI replies 'yes', this condition matches. (e.g. 'Is this an invoice?')"), self._ai_prompt)
 
         # Action fields
-        layout.addRow(QLabel("--- Actions ---"))
+        layout.addRow(QLabel("<b>--- Actions ---</b>"))
         self._move_to = QLineEdit()
         self._move_to.setPlaceholderText("Folder name")
-        layout.addRow("Move To:", self._move_to)
+        layout.addRow(create_field_label("Move To:", "Move To Folder", "Moves the email to this specific IMAP folder. Created if it doesn't exist."), self._move_to)
 
         self._flag = QCheckBox()
-        layout.addRow("Flag:", self._flag)
+        layout.addRow(create_field_label("Flag:", "Flag Message", "Stars or Flags the active email."), self._flag)
 
         self._delete = QCheckBox()
-        layout.addRow("Delete:", self._delete)
+        layout.addRow(create_field_label("Delete:", "Delete Email", "Moves the email to Trash or permanently deletes it. STOPS further action processing for this email."), self._delete)
 
         self._mark_read = QCheckBox()
-        layout.addRow("Mark Read:", self._mark_read)
+        layout.addRow(create_field_label("Mark Read:", "Mark Read", "Marks the email as read (seen flag)."), self._mark_read)
 
         self._mark_unread = QCheckBox()
-        layout.addRow("Mark Unread:", self._mark_unread)
+        layout.addRow(create_field_label("Mark Unread:", "Mark Unread", "Marks the email as unread."), self._mark_unread)
 
         self._label = QLineEdit()
         self._label.setPlaceholderText("Gmail label")
-        layout.addRow("Label:", self._label)
+        layout.addRow(create_field_label("Label:", "Apply Label", "Applies a provider-side label (Primarily applicable to Gmail)."), self._label)
 
         self._auto_sort_by_sender = QCheckBox()
-        layout.addRow("Auto-Sort by Sender:", self._auto_sort_by_sender)
+        layout.addRow(create_field_label("Auto-Sort by Sender:", "Auto-Sort By Sender", "Dynamically determines the folder name by parsing the sender domain or email handle."), self._auto_sort_by_sender)
 
         # Populate if editing
         if rule:
@@ -214,6 +219,46 @@ class RuleDialog(QDialog):
         }
 
 
+class AutoSortConfigDialog(QDialog):
+    """Dialog for configuring how auto-sort dynamically names target folders."""
+    def __init__(self, current_config, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configure Auto-Sort")
+        self.setMinimumWidth(380)
+        
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        
+        self.strategy_combo = QComboBox()
+        self.strategy_combo.addItem("Full Sender Email (e.g. user@domain.com)", "full_email")
+        self.strategy_combo.addItem("Sender Domain Only (e.g. domain.com)", "domain")
+        self.strategy_combo.addItem("Sender Name (e.g. John Doe)", "sender_name")
+        self.strategy_combo.addItem("Full Subject Line", "subject")
+        self.strategy_combo.addItem("First Word of Subject", "subject_first_word")
+        
+        # Load existing selection
+        current_strat = "full_email"
+        if isinstance(current_config, dict):
+            current_strat = current_config.get("strategy", "full_email")
+            
+        index = self.strategy_combo.findData(current_strat)
+        if index >= 0:
+            self.strategy_combo.setCurrentIndex(index)
+            
+        form.addRow(create_field_label("Naming Strategy:", "Naming Strategy", "Determines what attribute of the incoming email should be parsed to create the folder name on your email server."), self.strategy_combo)
+        layout.addLayout(form)
+        
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        
+    def get_config(self) -> dict:
+        return {"strategy": self.strategy_combo.currentData()}
+
+
 class RulesTab(QWidget):
     """CRUD table for email rules."""
 
@@ -229,7 +274,7 @@ class RulesTab(QWidget):
         auto_sort_frame = QFrame()
         auto_sort_frame.setFrameShape(QFrame.Shape.StyledPanel)
         auto_sort_frame.setStyleSheet(
-            "QFrame { background-color: #f0f7ff; border: 1px solid #b0d0f0;"
+            "QFrame { background-color: #1e1e1e; border: 1px solid #333333;"
             " border-radius: 6px; padding: 8px; }"
         )
         auto_sort_layout = QVBoxLayout(auto_sort_frame)
@@ -239,10 +284,17 @@ class RulesTab(QWidget):
         auto_sort_label = QLabel("<b>Auto-Sort by Sender</b>")
         header_row.addWidget(auto_sort_label)
         header_row.addStretch()
+        
+        self._auto_sort_config_btn = QPushButton("Configure")
+        self._auto_sort_config_btn.clicked.connect(self._configure_auto_sort)
+        header_row.addWidget(self._auto_sort_config_btn)
+        
         self._auto_sort_toggle = QCheckBox("Enable")
         self._auto_sort_toggle.toggled.connect(self._on_auto_sort_toggled)
         header_row.addWidget(self._auto_sort_toggle)
         auto_sort_layout.addLayout(header_row)
+
+        self._current_auto_sort_config = True
 
         desc = QLabel(
             "Automatically move emails into folders named after the sender's "
@@ -250,7 +302,7 @@ class RulesTab(QWidget):
             "Folders are created on the mail server if they don't exist."
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #555; font-size: 12px;")
+        desc.setStyleSheet("color: #a0a0a0; font-size: 13px;")
         auto_sort_layout.addWidget(desc)
 
         layout.addWidget(auto_sort_frame)
@@ -288,12 +340,36 @@ class RulesTab(QWidget):
             self._rules = load_rules(self._rules_path)
         except Exception:
             self._rules = []
-        # Sync toggle state (block signals to avoid re-triggering _on_auto_sort_toggled)
-        has_auto_sort = any(r["name"] == AUTO_SORT_RULE_NAME for r in self._rules)
+            
+        # Extract existing config status if present
+        has_auto_sort = False
+        for r in self._rules:
+            if r["name"] == AUTO_SORT_RULE_NAME:
+                has_auto_sort = True
+                self._current_auto_sort_config = r.get("action", {}).get("auto_sort_by_sender", True)
+                break
+                
+        if not hasattr(self, '_current_auto_sort_config'):
+            self._current_auto_sort_config = True
+
         self._auto_sort_toggle.blockSignals(True)
         self._auto_sort_toggle.setChecked(has_auto_sort)
         self._auto_sort_toggle.blockSignals(False)
         self._refresh_table()
+
+    def _configure_auto_sort(self):
+        # Open dialog pushing the memory struct
+        dlg = AutoSortConfigDialog(self._current_auto_sort_config, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._current_auto_sort_config = dlg.get_config()
+            
+            # If enabled, update the appended rule immediately
+            if self._auto_sort_toggle.isChecked():
+                for r in self._rules:
+                    if r["name"] == AUTO_SORT_RULE_NAME:
+                        r["action"]["auto_sort_by_sender"] = self._current_auto_sort_config
+                self._save()
+                self._refresh_table()
 
     def _user_rules(self) -> list[dict]:
         """Return rules excluding the auto-sort rule."""
@@ -315,11 +391,11 @@ class RulesTab(QWidget):
         # Remove existing auto-sort rule if present
         self._rules = [r for r in self._rules if r["name"] != AUTO_SORT_RULE_NAME]
         if checked:
-            # Append as last rule (catch-all)
+            # Append as last rule (catch-all) using memory state
             self._rules.append({
                 "name": AUTO_SORT_RULE_NAME,
                 "match": {"from": "*"},
-                "action": {"auto_sort_by_sender": True},
+                "action": {"auto_sort_by_sender": getattr(self, "_current_auto_sort_config", True)},
             })
         self._save()
         self._refresh_table()

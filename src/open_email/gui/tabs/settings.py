@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 
 from open_email.agent_core import AgentConfig
+from open_email.gui.widgets.ui_helpers import create_field_label
 
 logger = logging.getLogger("open_email")
 
@@ -32,23 +33,65 @@ class SettingsTab(QWidget):
         self._interval.setRange(10, 3600)
         self._interval.setSuffix(" seconds")
         self._interval.setValue(config.interval)
-        agent_form.addRow("Poll Interval:", self._interval)
+        agent_form.addRow(
+            create_field_label(
+                "Poll Interval:",
+                "Poll Interval",
+                "How frequently InboxAgent should check your email accounts for new messages. "
+                "Settings this too low may cause you to be rate-limited by your email provider. "
+                "60-120 seconds is generally recommended."
+            ),
+            self._interval
+        )
 
         self._model = QLineEdit(config.model)
-        agent_form.addRow("AI Model:", self._model)
+        agent_form.addRow(
+            create_field_label(
+                "AI Model:",
+                "AI Classification Model",
+                "The Ollama local LLM wrapper model to use. You must have Ollama installed "
+                "locally, and you must use 'ollama pull <model>' first. The default is 'llama3.2:3b'. "
+                "Leave blank if you aren't using AI Prompt matching rules."
+            ),
+            self._model
+        )
 
         self._dry_run = QCheckBox()
         self._dry_run.setChecked(config.dry_run)
-        agent_form.addRow("Dry Run:", self._dry_run)
+        agent_form.addRow(
+            create_field_label(
+                "Dry Run:",
+                "Dry Run Mode",
+                "When enabled, InboxAgent will process emails and log the actions it *would* take, "
+                "but will not actually modify, move, or delete anything on the server. Safest for testing rules."
+            ),
+            self._dry_run
+        )
 
         self._log_level = QComboBox()
         self._log_level.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
         self._log_level.setCurrentText(config.log_level)
         self._log_level.currentTextChanged.connect(self._apply_log_level)
-        agent_form.addRow("Log Level:", self._log_level)
+        agent_form.addRow(
+            create_field_label(
+                "Log Level:",
+                "Log Output Detail Level",
+                "Set to DEBUG to see detailed processing information (like which rules evaluate to false "
+                "and raw payloads). Change to ERROR for minimal console noise. 'INFO' is the default."
+            ),
+            self._log_level
+        )
 
         self._config_dir = QLineEdit(config.config_dir)
-        agent_form.addRow("Config Directory:", self._config_dir)
+        agent_form.addRow(
+            create_field_label(
+                "Config Directory:",
+                "Configuration Directory",
+                "The folder where accounts.yaml and rules.yaml are stored. You must restart the agent "
+                "(Stop and Start) to fully reload resources from a new directory location."
+            ),
+            self._config_dir
+        )
 
         layout.addWidget(agent_group)
 

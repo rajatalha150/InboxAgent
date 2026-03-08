@@ -60,11 +60,13 @@ class DashboardTab(QWidget):
         status_layout.addStretch()
 
         self._start_btn = QPushButton("Start Agent")
+        self._start_btn.setObjectName("PrimaryAction")
         self._start_btn.setMinimumWidth(120)
         self._start_btn.clicked.connect(self.start_requested.emit)
         status_layout.addWidget(self._start_btn)
 
         self._stop_btn = QPushButton("Stop Agent")
+        self._stop_btn.setObjectName("StopAction")
         self._stop_btn.setMinimumWidth(120)
         self._stop_btn.setEnabled(False)
         self._stop_btn.clicked.connect(self.stop_requested.emit)

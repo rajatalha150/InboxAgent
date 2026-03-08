@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 
 from open_email.agent_core import AgentConfig
 from open_email.config_loader import load_accounts, save_accounts
+from open_email.gui.widgets.ui_helpers import create_field_label
 
 COLUMNS = ["Name", "IMAP Server", "Port", "Email", "SSL"]
 
@@ -26,26 +27,26 @@ class AccountDialog(QDialog):
         layout = QFormLayout(self)
 
         self._name = QLineEdit(account.get("name", "") if account else "")
-        layout.addRow("Name:", self._name)
+        layout.addRow(create_field_label("Name:", "Account Name", "A friendly internal name for this account. Example: 'Personal Gmail'"), self._name)
 
         self._server = QLineEdit(account.get("imap_server", "") if account else "")
-        layout.addRow("IMAP Server:", self._server)
+        layout.addRow(create_field_label("IMAP Server:", "IMAP Server Address", "The provider IMAP address (e.g. 'imap.gmail.com' or 'outlook.office365.com')"), self._server)
 
         self._port = QSpinBox()
         self._port.setRange(1, 65535)
         self._port.setValue(account.get("imap_port", 993) if account else 993)
-        layout.addRow("Port:", self._port)
+        layout.addRow(create_field_label("Port:", "IMAP Port", "Standard IMAP port is 143. IMAP over SSL/TLS uses 993."), self._port)
 
         self._email = QLineEdit(account.get("email", "") if account else "")
-        layout.addRow("Email:", self._email)
+        layout.addRow(create_field_label("Email:", "Email Address", "Your full email address authentication login."), self._email)
 
         self._password = QLineEdit(account.get("password", "") if account else "")
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addRow("Password:", self._password)
+        layout.addRow(create_field_label("Password:", "Password / App Password", "If using 2FA on Gmail, Outlook, or Yahoo, you must generate a special 'App Password' rather than providing your main login password."), self._password)
 
         self._ssl = QCheckBox()
         self._ssl.setChecked(account.get("ssl", True) if account else True)
-        layout.addRow("SSL:", self._ssl)
+        layout.addRow(create_field_label("SSL:", "Enable SSL", "Forces an encrypted SSL connection to the IMAP server. Strongly Recommended."), self._ssl)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel

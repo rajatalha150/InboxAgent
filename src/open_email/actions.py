@@ -64,10 +64,39 @@ def execute_actions(
         else:
             client.add_label(uid, label)
 
-    if action.get("auto_sort_by_sender") and parsed_email:
-        _, sender_email = email.utils.parseaddr(parsed_email.from_addr)
-        if sender_email:
-            if dry_run:
-                logger.info("[DRY RUN] Would auto-sort UID %d to folder '%s'", uid, sender_email)
+    auto_sort = action.get("auto_sort_by_sender")
+    if auto_sort and parsed_email:
+        folder_name = None
+        strategy = "full_email"
+        
+        if isinstance(auto_sort, dict):
+            strategy = auto_sort.get("strategy", "full_email")
+            
+        sender_name, sender_email = email.utils.parseaddr(parsed_email.from_addr)
+        
+        if strategy == "full_email":
+            folder_name = sender_email
+        elif strategy == "domain":
+            if sender_email and "@" in sender_email:
+                folder_name = sender_email.split("@")[-1]
             else:
-                client.move_email(uid, sender_email)
+                folder_name = sender_email
+        elif strategy == "sender_name":
+            folder_name = sender_name.strip() if sender_name else sender_email
+        elif strategy == "subject":
+            folder_name = parsed_email.subject.strip()[:50] if parsed_email.subject else "No Subject"
+        elif strategy == "subject_first_word":
+            if parsed_email.subject:
+                folder_name = parsed_email.subject.strip().split()[0][:30]
+            else:
+                folder_name = "No Subject"
+
+        if folder_name:
+            # Sanitize folder name for IMAP constraints
+            folder_name = "".join(c for c in folder_name if c.isalnum() or c in " ._-@")
+            folder_name = folder_name.strip()
+            if folder_name:
+                if dry_run:
+                    logger.info("[DRY RUN] Would auto-sort UID %d to folder '%s'", uid, folder_name)
+                else:
+                    client.move_email(uid, folder_name)

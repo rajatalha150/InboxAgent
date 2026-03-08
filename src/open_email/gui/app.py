@@ -17,6 +17,7 @@ from open_email.gui.tabs.logs import LogsTab
 from open_email.gui.tabs.rules import RulesTab
 from open_email.gui.tabs.settings import SettingsTab
 from open_email.gui.widgets.log_handler import QtLogHandler
+from open_email.gui.widgets.ui_helpers import GLOBAL_STYLE
 
 logger = logging.getLogger("open_email")
 
@@ -183,6 +184,7 @@ def run_app(config: AgentConfig, minimized: bool = False):
     app = QApplication(sys.argv)
     app.setApplicationName("InboxAgent")
     app.setQuitOnLastWindowClosed(False)
+    app.setStyleSheet(GLOBAL_STYLE)
 
     window = MainWindow(config, minimized=minimized)
 

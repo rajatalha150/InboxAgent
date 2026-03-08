@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Copyright (c) 2026 Peak Services Inc.** — [peakservices-inc.com](https://peakservices-inc.com)
-**License:** MIT
+**License:** Proprietary (See LICENSE)
 
 ---
 
@@ -42,7 +42,7 @@ Everything runs on your own machine. Your email credentials and message content 
 - **Pattern matching** — filter by sender, recipient, subject keywords, or body text.
 - **Local AI classification** — ask natural-language questions about emails using Ollama (optional).
 - **Rich set of actions** — move to folders, flag, delete, mark read/unread, add Gmail labels, or auto-sort by sender.
-- **Desktop GUI** — a graphical interface with a dashboard, live activity feed, account management, rule editor, logs, and settings.
+- **Premium Dark Theme Desktop GUI** — a sleek graphical interface with a dashboard, live activity feed, account management, rule editor, logs, built-in tooltips (`?`), and settings.
 - **Command-line mode** — run headless on a server or in the background.
 - **System tray integration** — minimizes to your system tray and runs quietly.
 - **Dry-run mode** — test your rules without making any changes.
@@ -287,7 +287,7 @@ When a rule matches an email, one or more actions are executed:
 | `mark_read` | `true` | Marks the email as read (sets the Seen flag). |
 | `mark_unread` | `true` | Marks the email as unread (removes the Seen flag). |
 | `label` | label name | Adds a Gmail label. Only works with Gmail accounts. |
-| `auto_sort_by_sender` | `true` | Moves the email into a folder named after the sender's email address. |
+| `auto_sort_by_sender` | `true` or config dict | Dynamically sorts emails. Can be configured via GUI to extract: Full Sender Email, Sender Domain Only, Sender Name, Full Subject Line, or First Word of Subject. Automatically sanitizes strings to create safe IMAP target folders. |
 
 You can combine multiple actions in a single rule:
 
