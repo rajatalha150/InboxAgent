@@ -1,0 +1,14 @@
+rules:
+  - name: billing-invoices
+    match:
+      subject: ["invoice", "billing", "payment due", "statement"]
+    action:
+      flag: true
+      move_to: Invoices
+
+  - name: ai-classify-important
+    match:
+      ai_prompt: "Is this email about a job opportunity or interview?"
+    action:
+      move_to: Jobs
+      flag: true

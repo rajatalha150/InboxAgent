@@ -1,0 +1,24 @@
+[Unit]
+Description=InboxAgent - Privacy-first AI email organization agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/inbox-agent --config-dir /etc/inbox-agent --uid-file /var/lib/inbox-agent/processed_uids.json
+Restart=on-failure
+RestartSec=30
+User=inbox-agent
+Group=inbox-agent
+StateDirectory=inbox-agent
+ConfigurationDirectory=inbox-agent
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=/var/lib/inbox-agent
+
+[Install]
+WantedBy=multi-user.target

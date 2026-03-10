@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inbox-agent"
+version = "0.1.0"
+description = "InboxAgent - Privacy-first local AI email organization agent"
+requires-python = ">=3.10"
+dependencies = [
+    "imapclient>=3.0.0",
+    "pyyaml>=6.0",
+    "ollama>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+gui = [
+    "PyQt6>=6.6.0,<6.10.0",
+]
+packaging = [
+    "pyinstaller>=6.0",
+    "cx_Freeze>=6.15",
+]
+
+[project.scripts]
+inbox-agent = "open_email.main:main"
+
+[project.gui-scripts]
+inbox-agent-gui = "open_email.main:main_gui"
+
+[tool.setuptools.packages.find]
+where = ["src"]

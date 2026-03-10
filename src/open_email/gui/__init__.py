@@ -1,0 +1,1 @@
+"""Open-Email GUI package."""
