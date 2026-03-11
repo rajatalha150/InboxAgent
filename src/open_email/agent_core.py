@@ -32,14 +32,29 @@ class AgentConfig:
     log_level: str = "INFO"
 
 
+from open_email import summary
+
 @dataclass
 class AgentStats:
-    """Runtime statistics for the agent."""
-    emails_processed: int = 0
-    rules_triggered: int = 0
-    errors: int = 0
+    """Statistics for an agent run."""
+
+    start_time: float = field(default_factory=time.time)
     cycles_completed: int = 0
-    accounts_connected: int = 0
+    emails_processed: int = 0
+    errors: int = 0
+    actions_taken: list[str] = field(default_factory=list)
+
+    @property
+    def uptime(self) -> str:
+        """Return human-readable uptime."""
+        seconds = int(time.time() - self.start_time)
+        if seconds < 60:
+            return f"{seconds}s"
+        minutes, seconds = divmod(seconds, 60)
+        if minutes < 60:
+            return f"{minutes}m {seconds}s"
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours}h {minutes}m"
 
 
 class AgentState:
@@ -115,6 +130,16 @@ class AgentCore:
         """Request the agent to stop gracefully."""
         self._stop_event.set()
 
+    def _save_summary(self, summary_text: str):
+        """Save the cycle summary to a timestamped file."""
+        summaries_dir = Path(self.config.config_dir) / "summaries"
+        summaries_dir.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        summary_file = summaries_dir / f"summary_{timestamp}.json"
+        with open(summary_file, "w") as f:
+            json.dump({"timestamp": timestamp, "summary": summary_text}, f, indent=4)
+        logger.info("Saved cycle summary to %s", summary_file)
+
     def run(self):
         """Main agent loop. Blocks until stopped or error."""
         self._stop_event.clear()
@@ -159,8 +184,8 @@ class AgentCore:
         self.stats.accounts_connected = len(clients)
 
         # Load processed UIDs
-        uid_path = Path(self.config.uid_file)
-        all_processed = self._load_processed_uids(uid_path)
+        self.uid_file = Path(self.config.config_dir) / self.config.uid_file
+        all_processed = self._load_processed_uids()
 
         self._emit_state(AgentState.RUNNING)
         self._emit_stats()
@@ -182,10 +207,16 @@ class AgentCore:
                     if newly_processed:
                         processed.update(newly_processed)
                         all_processed[account_name] = list(processed)
-                        self._save_processed_uids(uid_path, all_processed)
+                        self._save_processed_uids(all_processed)
 
                 self.stats.cycles_completed += 1
                 self._emit_stats()
+
+                # Generate and save summary
+                if self.stats.actions_taken:
+                    summary_text = summary.generate_summary(self.stats.actions_taken)
+                    self._save_summary(summary_text)
+                    self.stats.actions_taken.clear()
 
                 # Dynamic sleep interval
                 interval = self._get_current_interval()
@@ -267,9 +298,12 @@ class AgentCore:
                         logger.info(rule_msg)
                         self._emit_activity(rule_msg)
                         self.stats.rules_triggered += 1
-                        execute_actions(client, uid, match["action"],
-                                        dry_run=self.config.dry_run,
-                                        parsed_email=parsed)
+                        execute_actions(
+                            client, uid, match["action"],
+                            dry_run=self.config.dry_run,
+                            stats=self.stats,
+                            parsed_email=parsed
+                        )
                 else:
                     logger.debug("[%s] No rules matched UID %d", client.name, uid)
 
@@ -285,14 +319,26 @@ class AgentCore:
 
         return newly_processed
 
-    @staticmethod
-    def _load_processed_uids(path: Path) -> dict[str, list[int]]:
-        if path.exists():
-            with open(path) as f:
-                return json.load(f)
-        return {}
+    def _load_processed_uids(self) -> dict[str, set[str]]:
+        """Load the set of processed UIDs from file for all accounts."""
+        if not self.uid_file.exists():
+            return {}
+        try:
+            with open(self.uid_file) as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    logger.warning("Old UID format detected, converting to new format.")
+                    return {"default": set(data)} # Convert old list format
+                return {account: set(uids) for account, uids in data.items()}
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning("Could not load processed UIDs, starting fresh: %s", e)
+            return {}
 
-    @staticmethod
-    def _save_processed_uids(path: Path, uids: dict[str, list[int]]) -> None:
-        with open(path, "w") as f:
-            json.dump(uids, f)
+    def _save_processed_uids(self, all_uids: dict[str, set[str]]):
+        """Save the set of processed UIDs to file for all accounts."""
+        try:
+            with open(self.uid_file, "w") as f:
+                data_to_save = {account: list(uids) for account, uids in all_uids.items()}
+                json.dump(data_to_save, f)
+        except IOError as e:
+            logger.error("Could not save processed UIDs to %s: %s", self.uid_file, e)

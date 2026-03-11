@@ -84,10 +84,10 @@ class AccountDialog(QDialog):
 class AccountsTab(QWidget):
     """CRUD table for email accounts."""
 
-    def __init__(self, config: AgentConfig, parent=None):
+    def __init__(self, agent_core: AgentCore, parent=None):
         super().__init__(parent)
-        self._config = config
-        self._accounts_path = Path(config.config_dir) / "accounts.yaml"
+        self._agent_core = agent_core
+        self._accounts_path = Path(self._agent_core.config.config_dir) / "accounts.yaml"
         self._accounts: list[dict] = []
 
         layout = QVBoxLayout(self)
@@ -142,6 +142,9 @@ class AccountsTab(QWidget):
         save_accounts(self._accounts_path, self._accounts)
 
     def _add_account(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         dlg = AccountDialog(parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._accounts.append(dlg.get_account())
@@ -149,6 +152,9 @@ class AccountsTab(QWidget):
             self._refresh_table()
 
     def _edit_account(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         row = self._table.currentRow()
         if row < 0:
             return
@@ -159,6 +165,9 @@ class AccountsTab(QWidget):
             self._refresh_table()
 
     def _remove_account(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         row = self._table.currentRow()
         if row < 0:
             return
@@ -171,3 +180,9 @@ class AccountsTab(QWidget):
             self._accounts.pop(row)
             self._save()
             self._refresh_table()
+
+    def _show_restart_warning(self):
+        QMessageBox.warning(
+            self, "Agent Running",
+            "Please stop the agent before modifying accounts. Changes will apply after a restart."
+        )

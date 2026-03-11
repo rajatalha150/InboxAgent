@@ -9,13 +9,14 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenu, QSystemTrayIcon, QTabWidget,
 )
 
-from open_email.agent_core import AgentConfig
+from open_email.agent_core import AgentConfig, AgentCore
 from open_email.gui.agent_thread import AgentThread
 from open_email.gui.tabs.accounts import AccountsTab
 from open_email.gui.tabs.dashboard import DashboardTab
 from open_email.gui.tabs.logs import LogsTab
 from open_email.gui.tabs.rules import RulesTab
 from open_email.gui.tabs.settings import SettingsTab
+from open_email.gui.tabs.activity import ActivityTab
 from open_email.gui.widgets.log_handler import QtLogHandler
 from open_email.gui.widgets.ui_helpers import GLOBAL_STYLE
 
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
     def __init__(self, config: AgentConfig, minimized: bool = False):
         super().__init__()
         self.config = config
-        self._start_minimized = minimized
+        self._agent_core = AgentCore(config)
         self._agent_thread: AgentThread | None = None
         self._really_quit = False
 
@@ -60,15 +61,17 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self.setCentralWidget(self._tabs)
 
-        self._dashboard_tab = DashboardTab(self)
-        self._accounts_tab = AccountsTab(config, self)
-        self._rules_tab = RulesTab(config, self._accounts_tab, self)
+        self._dashboard_tab = DashboardTab(self._agent_core, self)
+        self._accounts_tab = AccountsTab(self._agent_core, self)
+        self._rules_tab = RulesTab(self._agent_core, self)
+        self._activity_tab = ActivityTab(self._agent_core, self)
         self._logs_tab = LogsTab(self._log_handler, self)
-        self._settings_tab = SettingsTab(config, self)
+        self._settings_tab = SettingsTab(self._agent_core, self)
 
         self._tabs.addTab(self._dashboard_tab, "Dashboard")
         self._tabs.addTab(self._accounts_tab, "Accounts")
         self._tabs.addTab(self._rules_tab, "Rules")
+        self._tabs.addTab(self._activity_tab, "Activity")
         self._tabs.addTab(self._logs_tab, "Logs")
         self._tabs.addTab(self._settings_tab, "Settings")
 
@@ -129,7 +132,7 @@ class MainWindow(QMainWindow):
         if self._agent_thread and self._agent_thread.isRunning():
             return
 
-        self._agent_thread = AgentThread(self.config, parent=self)
+        self._agent_thread = AgentThread(self._agent_core, parent=self)
         self._agent_thread.state_changed.connect(self._on_state_changed)
         self._agent_thread.stats_updated.connect(self._dashboard_tab.update_stats)
         self._agent_thread.activity.connect(self._dashboard_tab.add_activity)

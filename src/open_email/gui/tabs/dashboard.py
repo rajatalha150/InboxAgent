@@ -40,8 +40,9 @@ class DashboardTab(QWidget):
     start_requested = pyqtSignal()
     stop_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, agent_core: "AgentCore", parent=None):
         super().__init__(parent)
+        self._agent_core = agent_core
         layout = QVBoxLayout(self)
 
         # --- Status bar ---
@@ -181,8 +182,9 @@ class DashboardTab(QWidget):
         if state == AgentState.STOPPED:
             self._restart_banner.setVisible(False)
 
-    def update_stats(self, stats: AgentStats):
-        """Update stat counters."""
+    def update_stats(self):
+        """Update stat counters from the agent core."""
+        stats = self._agent_core.stats
         self._stat_labels["accounts"].setText(str(stats.accounts_connected))
         self._stat_labels["processed"].setText(str(stats.emails_processed))
         self._stat_labels["rules"].setText(str(stats.rules_triggered))

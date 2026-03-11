@@ -341,11 +341,10 @@ class ContentRulesConfigDialog(QDialog):
 class RulesTab(QWidget):
     """CRUD table for email rules."""
 
-    def __init__(self, config: AgentConfig, accounts_tab, parent=None):
+    def __init__(self, agent_core: AgentCore, parent=None):
         super().__init__(parent)
-        self._config = config
-        self._accounts_tab = accounts_tab
-        self._rules_path = Path(config.config_dir) / "rules.yaml"
+        self._agent_core = agent_core
+        self._rules_path = Path(self._agent_core.config.config_dir) / "rules.yaml"
         self._rules: list[dict] = []
         self._current_content_rules_config = {}
 
@@ -519,7 +518,6 @@ class RulesTab(QWidget):
             })
         
         save_rules(self._rules_path, self._rules)
-        self._accounts_tab._save()
 
     def _on_auto_sort_toggled(self, checked: bool):
         """Add or remove the auto-sort rule based on toggle state."""
@@ -536,6 +534,9 @@ class RulesTab(QWidget):
         self._refresh_table()
 
     def _add_rule(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         dlg = RuleDialog(parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             new_rule = dlg.get_rule()
@@ -552,6 +553,9 @@ class RulesTab(QWidget):
             self._refresh_table()
 
     def _edit_rule(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         row = self._table.currentRow()
         if row < 0:
             return
@@ -565,6 +569,9 @@ class RulesTab(QWidget):
             self._refresh_table()
 
     def _remove_rule(self):
+        if self._agent_core.state == AgentState.RUNNING:
+            self._show_restart_warning()
+            return
         row = self._table.currentRow()
         if row < 0:
             return
@@ -580,3 +587,9 @@ class RulesTab(QWidget):
             self._rules.pop(real_idx)
             self._save()
             self._refresh_table()
+
+    def _show_restart_warning(self):
+        QMessageBox.warning(
+            self, "Agent Running",
+            "Please stop the agent before modifying rules. Changes will apply after a restart."
+        )

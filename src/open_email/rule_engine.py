@@ -106,6 +106,7 @@ def _evaluate_content_based_rules(parsed_email: ParsedEmail, config: dict) -> li
                     action["move_to"] = "Calendar"
                 
                 if action:
+                    logger.info("Content-based rule '%s' matched email UID %d (subject: %s)", rule_name, parsed_email.uid, parsed_email.subject)
                     matches.append({"name": f"content-based: {rule_name}", "action": action})
                     # Stop after first match within content-based rules for this email
                     return matches

@@ -19,9 +19,9 @@ class SettingsTab(QWidget):
 
     config_changed = pyqtSignal(object)  # AgentConfig
 
-    def __init__(self, config: AgentConfig, parent=None):
+    def __init__(self, agent_core: AgentCore, parent=None):
         super().__init__(parent)
-        self._config = config
+        self._agent_core = agent_core
 
         layout = QVBoxLayout(self)
 
@@ -32,7 +32,7 @@ class SettingsTab(QWidget):
         self._interval = QSpinBox()
         self._interval.setRange(10, 3600)
         self._interval.setSuffix(" seconds")
-        self._interval.setValue(config.interval)
+        self._interval.setValue(self._agent_core.config.interval)
         agent_form.addRow(
             create_field_label(
                 "Poll Interval:",
@@ -48,7 +48,7 @@ class SettingsTab(QWidget):
 
         self._poll_interval_mode = QComboBox()
         self._poll_interval_mode.addItems(["Fixed", "Dynamic", "Aggressive"])
-        self._poll_interval_mode.setCurrentText(config.poll_interval_mode.capitalize())
+        self._poll_interval_mode.setCurrentText(self._agent_core.config.poll_interval_mode.capitalize())
         agent_form.addRow(
             create_field_label(
                 "Poll Interval Mode:",
@@ -60,7 +60,7 @@ class SettingsTab(QWidget):
 
         self._batch_size = QSpinBox()
         self._batch_size.setRange(10, 10000)
-        self._batch_size.setValue(config.batch_size)
+        self._batch_size.setValue(self._agent_core.config.batch_size)
         agent_form.addRow(
             create_field_label(
                 "Batch Size:",
@@ -70,7 +70,7 @@ class SettingsTab(QWidget):
             self._batch_size,
         )
 
-        self._model = QLineEdit(config.model)
+        self._model = QLineEdit(self._agent_core.config.model)
         agent_form.addRow(
             create_field_label(
                 "AI Model:",
@@ -83,7 +83,7 @@ class SettingsTab(QWidget):
         )
 
         self._dry_run = QCheckBox()
-        self._dry_run.setChecked(config.dry_run)
+        self._dry_run.setChecked(self._agent_core.config.dry_run)
         agent_form.addRow(
             create_field_label(
                 "Dry Run:",
@@ -96,7 +96,7 @@ class SettingsTab(QWidget):
 
         self._log_level = QComboBox()
         self._log_level.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
-        self._log_level.setCurrentText(config.log_level)
+        self._log_level.setCurrentText(self._agent_core.config.log_level)
         self._log_level.currentTextChanged.connect(self._apply_log_level)
         agent_form.addRow(
             create_field_label(
@@ -108,7 +108,7 @@ class SettingsTab(QWidget):
             self._log_level
         )
 
-        self._config_dir = QLineEdit(config.config_dir)
+        self._config_dir = QLineEdit(self._agent_core.config.config_dir)
         agent_form.addRow(
             create_field_label(
                 "Config Directory:",
@@ -139,6 +139,24 @@ class SettingsTab(QWidget):
 
         layout.addWidget(system_group)
 
+        # --- Cache Management ---
+        cache_group = QGroupBox("Cache Management")
+        cache_form = QFormLayout(cache_group)
+
+        clear_summaries_btn = QPushButton("Clear Cycle Summaries")
+        clear_summaries_btn.clicked.connect(self._clear_summaries)
+        cache_form.addRow(clear_summaries_btn)
+
+        clear_uids_btn = QPushButton("Clear Processed Email History")
+        clear_uids_btn.clicked.connect(self._clear_uids)
+        cache_form.addRow(clear_uids_btn)
+
+        clear_logs_btn = QPushButton("Clear Agent Logs")
+        clear_logs_btn.clicked.connect(self._clear_logs)
+        cache_form.addRow(clear_logs_btn)
+
+        layout.addWidget(cache_group)
+
         # Apply button
         apply_btn = QPushButton("Apply Settings")
         apply_btn.clicked.connect(self._apply)
@@ -153,11 +171,11 @@ class SettingsTab(QWidget):
             poll_interval_mode=self._poll_interval_mode.currentText().lower(),
             dry_run=self._dry_run.isChecked(),
             model=self._model.text().strip(),
-            uid_file=self._config.uid_file,
+            uid_file=self._agent_core.config.uid_file,
             log_level=self._log_level.currentText(),
             batch_size=self._batch_size.value(),
         )
-        self._config = new_config
+        self._agent_core.config = new_config
         self._apply_log_level(new_config.log_level)
         self.config_changed.emit(new_config)
         logger.info("Settings applied: interval=%ds, model=%s, dry_run=%s, batch_size=%d",
@@ -173,3 +191,47 @@ class SettingsTab(QWidget):
             logger.info("Auto-start %s", "enabled" if enabled else "disabled")
         except Exception as e:
             logger.warning("Failed to set auto-start: %s", e)
+
+    def _clear_summaries(self):
+        """Delete all summary files."""
+        reply = QMessageBox.question(self, "Confirm", "Are you sure you want to delete all cycle summaries?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.No:
+            return
+
+        summaries_dir = Path(self._agent_core.config.config_dir) / "summaries"
+        if not summaries_dir.exists():
+            return
+        for summary_file in summaries_dir.glob("summary_*.json"):
+            summary_file.unlink()
+        logger.info("Cleared all cycle summaries.")
+        QMessageBox.information(self, "Success", "All cycle summaries have been deleted.")
+
+    def _clear_uids(self):
+        """Delete the processed UIDs file."""
+        uid_file = Path(self._agent_core.config.config_dir) / self._agent_core.config.uid_file
+        try:
+            with open(uid_file, "w") as f:
+                json.dump({}, f)
+            logger.info("Cleared processed email history.")
+            QMessageBox.information(self, "Success", "Processed email history has been cleared.")
+        except Exception as e:
+            logger.error("Failed to clear processed email history: %s", e)
+            QMessageBox.warning(self, "Error", f"Failed to clear processed email history: {e}")
+
+    def _clear_logs(self):
+        """Delete the agent log file."""
+        reply = QMessageBox.question(self, "Confirm", "Are you sure you want to delete the agent log file?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.No:
+            return
+
+        log_file = Path(self._agent_core.config.config_dir) / "agent.log"
+        if log_file.exists():
+            try:
+                log_file.unlink()
+                logger.info("Cleared agent logs.")
+                QMessageBox.information(self, "Success", "Agent logs have been cleared.")
+            except Exception as e:
+                logger.error("Failed to clear agent logs: %s", e)
+                QMessageBox.warning(self, "Error", f"Failed to clear agent logs: {e}")

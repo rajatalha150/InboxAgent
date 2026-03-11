@@ -1,103 +1,62 @@
-"""Execute email actions (move, flag, delete, etc.)."""
+"""Rule actions: move, flag, delete, etc."""
 
-import email.utils
 import logging
-
-from open_email.imap_client import EmailClient
 
 logger = logging.getLogger(__name__)
 
+def move_to(client, uid: str, dest_folder: str, dry_run: bool):
+    if not dry_run:
+        client.move(uid, dest_folder)
+    logger.info("Moved email UID %s to %s", uid, dest_folder)
 
-def execute_actions(
-    client: EmailClient,
-    uid: int,
-    action: dict,
-    dry_run: bool = False,
-    parsed_email=None,
-) -> None:
-    """Execute the actions defined in a matched rule.
+def flag_email(client, uid: str, dry_run: bool):
+    if not dry_run:
+        client.flag(uid)
+    logger.info("Flagged email UID %s", uid)
 
-    Args:
-        client: The IMAP client to use.
-        uid: The email UID to act on.
-        action: Action dict from the matched rule.
-        dry_run: If True, log actions without executing them.
-        parsed_email: The parsed email object (needed for auto_sort_by_sender).
-    """
+def delete_email(client, uid: str, dry_run: bool):
+    if not dry_run:
+        client.delete(uid)
+    logger.info("Deleted email UID %s", uid)
+
+def mark_as_read(client, uid: str, dry_run: bool):
+    if not dry_run:
+        client.mark_as_read(uid)
+    logger.info("Marked email UID %s as read", uid)
+
+def mark_as_unread(client, uid: str, dry_run: bool):
+    if not dry_run:
+        client.mark_as_unread(uid)
+    logger.info("Marked email UID %s as unread", uid)
+
+def add_label(client, uid: str, label: str, dry_run: bool):
+    if not dry_run:
+        client.add_label(uid, label)
+    logger.info("Labeled email UID %s with '%s'", uid, label)
+
+def execute_actions(client, uid: str, action: dict, dry_run: bool, stats, parsed_email):
+    """Execute the actions defined in a rule."""
     if action.get("delete"):
-        if dry_run:
-            logger.info("[DRY RUN] Would delete UID %d", uid)
-        else:
-            client.delete_email(uid)
-        return  # No further actions needed after delete
+        delete_email(client, uid, dry_run)
+        stats.actions_taken.append(f"Deleted email from {parsed_email.from_addr}")
+        return
 
     if "move_to" in action:
-        folder = action["move_to"]
-        if dry_run:
-            logger.info("[DRY RUN] Would move UID %d to '%s'", uid, folder)
-        else:
-            client.move_email(uid, folder)
+        move_to(client, uid, action["move_to"], dry_run)
+        stats.actions_taken.append(f"Moved email to '{action['move_to']}'")
 
-    if "flag" in action:
-        flagged = action["flag"]
-        if dry_run:
-            logger.info("[DRY RUN] Would %s UID %d", "flag" if flagged else "unflag", uid)
-        else:
-            client.flag_email(uid, flagged)
+    if action.get("flag"):
+        flag_email(client, uid, dry_run)
+        stats.actions_taken.append(f"Flagged email from {parsed_email.from_addr}")
 
     if action.get("mark_read"):
-        if dry_run:
-            logger.info("[DRY RUN] Would mark UID %d as read", uid)
-        else:
-            client.mark_read(uid)
+        mark_as_read(client, uid, dry_run)
+        stats.actions_taken.append(f"Marked email from {parsed_email.from_addr} as read")
 
     if action.get("mark_unread"):
-        if dry_run:
-            logger.info("[DRY RUN] Would mark UID %d as unread", uid)
-        else:
-            client.mark_unread(uid)
+        mark_as_unread(client, uid, dry_run)
+        stats.actions_taken.append(f"Marked email from {parsed_email.from_addr} as unread")
 
     if "label" in action:
-        label = action["label"]
-        if dry_run:
-            logger.info("[DRY RUN] Would add label '%s' to UID %d", label, uid)
-        else:
-            client.add_label(uid, label)
-
-    auto_sort = action.get("auto_sort_by_sender")
-    if auto_sort and parsed_email:
-        folder_name = None
-        strategy = "full_email"
-        
-        if isinstance(auto_sort, dict):
-            strategy = auto_sort.get("strategy", "full_email")
-            
-        sender_name, sender_email = email.utils.parseaddr(parsed_email.from_addr)
-        
-        if strategy == "full_email":
-            folder_name = sender_email
-        elif strategy == "domain":
-            if sender_email and "@" in sender_email:
-                folder_name = sender_email.split("@")[-1]
-            else:
-                folder_name = sender_email
-        elif strategy == "sender_name":
-            folder_name = sender_name.strip() if sender_name else sender_email
-        elif strategy == "subject":
-            folder_name = parsed_email.subject.strip()[:50] if parsed_email.subject else "No Subject"
-        elif strategy == "subject_first_word":
-            if parsed_email.subject:
-                folder_name = parsed_email.subject.strip().split()[0][:30]
-            else:
-                folder_name = "No Subject"
-
-        if folder_name:
-            # Sanitize folder name for IMAP constraints
-            # Replace special characters with underscores
-            folder_name = "".join(c if c.isalnum() else '_' for c in folder_name)
-            folder_name = folder_name.strip("_")
-            if folder_name:
-                if dry_run:
-                    logger.info("[DRY RUN] Would auto-sort UID %d to folder '%s'", uid, folder_name)
-                else:
-                    client.move_email(uid, folder_name)
+        add_label(client, uid, action["label"], dry_run)
+        stats.actions_taken.append(f"Labeled email from {parsed_email.from_addr} with '{action['label']}'")
