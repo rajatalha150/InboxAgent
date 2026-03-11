@@ -45,32 +45,37 @@ def evaluate_rules(
 ) -> list[dict]:
     """Evaluate rules against a parsed email, return matching rules' actions."""
     matches = []
-    content_based_rules = None
 
-    for rule in rules:
-        name = rule["name"]
-        match = rule["match"]
-        action = rule["action"]
+    # Separate rules for prioritized execution
+    custom_rules = [r for r in rules if r["name"] not in ("auto-sort-by-sender", "content-based-rules")]
+    auto_sort_rule = next((r for r in rules if r["name"] == "auto-sort-by-sender"), None)
+    content_rules_container = next((r for r in rules if r["name"] == "content-based-rules"), None)
 
-        if name == "content-based-rules":
-            content_based_rules = action.get("content_based_rules", {})
-            continue
-
-        if _rule_matches(parsed_email, match, ai_classifier, name):
-            logger.info("Rule '%s' matched email UID %d (subject: %s)", name, parsed_email.uid, parsed_email.subject)
-            matches.append({"name": name, "action": action})
+    # 1. Custom rules take highest priority
+    for rule in custom_rules:
+        if _rule_matches(parsed_email, rule["match"], ai_classifier, rule["name"]):
+            logger.info("Rule '%s' matched email UID %d (subject: %s)", rule["name"], parsed_email.uid, parsed_email.subject)
+            matches.append({"name": rule["name"], "action": rule["action"]})
             if first_match_only:
                 return matches
 
-    if content_based_rules:
-        matches.extend(_evaluate_content_based_rules(parsed_email, content_based_rules))
-    
-    # The auto-sort rule should be a catch-all, evaluated last
-    auto_sort_rule = next((r for r in rules if r["name"] == "auto-sort-by-sender"), None)
-    if auto_sort_rule and not matches:
+    # If any custom rules matched, they take precedence and we're done.
+    if matches:
+        return matches
+
+    # 2. Content-based rules are next (only if no custom rules matched)
+    if content_rules_container:
+        content_based_rules = content_rules_container.get("action", {}).get("content_based_rules", {})
+        content_matches = _evaluate_content_based_rules(parsed_email, content_based_rules)
+        if content_matches:
+            return content_matches
+
+    # 3. Auto-sort is the final catch-all (only if nothing else matched)
+    if auto_sort_rule:
         if _rule_matches(parsed_email, auto_sort_rule["match"], ai_classifier, auto_sort_rule["name"]):
-            logger.info("Rule 'auto-sort-by-sender' matched email UID %d (subject: %s)", parsed_email.uid, parsed_email.subject)
-            matches.append({"name": "auto-sort-by-sender", "action": auto_sort_rule["action"]})
+            logger.info("Rule '%s' matched email UID %d (subject: %s)", auto_sort_rule["name"], parsed_email.uid, parsed_email.subject)
+            matches.append({"name": auto_sort_rule["name"], "action": auto_sort_rule["action"]})
+            return matches
 
     return matches
 

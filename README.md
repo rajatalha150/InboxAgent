@@ -5,11 +5,17 @@
 ![InboxAgent Dashboard](https://github.com/rajatalha150/InboxAgent/assets/dashboard_preview.png)
 
 ## Key Features
+- **Advanced Rule Engine:** Create rules based on sender, recipient, subject, body keywords, and email age.
+- **Dynamic Polling:** Choose between Fixed, Dynamic (business hours), and Aggressive polling modes to control how often the agent checks your mail.
+- **Batch Processing:** Configure the maximum number of emails to process in a single cycle to manage performance on large inboxes.
+- **Local AI Classification:** Hook directly into [Ollama](https://ollama.com) to categorize emails using natural language prompts (e.g. *"Is this an invoice?"*).
+- **Powerful Action Engine:** Move, flag, label, mark as read, delete, or dynamically auto-sort emails into folders.
+- **Universal Provider Support:** Connects securely to Google Workspace, Microsoft Outlook, Yahoo, Fastmail, or any generic IMAP service.
 - **Premium Dark Theme UI:** Manage rules, view logs, and track statistics in a sleek, customizable desktop dashboard.
 - **Privacy by Design:** Everything runs securely on your own machine. Zero cloud telemetry.
-- **Local AI Classification:** Hook directly into [Ollama](https://ollama.com) to categorize emails using natural language prompts (e.g. *"Is this an invoice?"*).
-- **Advanced Action Engine:** Move, flag, label, mark as read, delete, or dynamically auto-sort emails into folders using intelligent string extractors.
-- **Universal Provider Support:** Connects securely to Google Workspace, Microsoft Outlook, Yahoo, Fastmail, or any generic IMAP service.
+
+### Future Features
+- **Cycle Summaries (NLG):** Implement a basic Natural Language Generation (NLG) system to create more human-like, paragraph-style summaries of each processing cycle.
 
 ## Installation
 
