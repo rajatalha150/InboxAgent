@@ -42,8 +42,32 @@ class SettingsTab(QWidget):
                 "enters a sleep phase for this exact Poll Interval length. "
                 "Because it sleeps in 1-second ticks, clicking 'Stop Agent' immediately "
                 "interrupts the wait time. Setting this interval too low (<60s) may cause your provider to permanently rate-limit your account."
-            ),
+            ), 
             self._interval
+        )
+
+        self._poll_interval_mode = QComboBox()
+        self._poll_interval_mode.addItems(["Fixed", "Dynamic", "Aggressive"])
+        self._poll_interval_mode.setCurrentText(config.poll_interval_mode.capitalize())
+        agent_form.addRow(
+            create_field_label(
+                "Poll Interval Mode:",
+                "Poll Interval Mode",
+                "'Fixed': Use the value above. 'Dynamic': Poll frequently during business hours, less at night. 'Aggressive': Poll very frequently.",
+            ),
+            self._poll_interval_mode,
+        )
+
+        self._batch_size = QSpinBox()
+        self._batch_size.setRange(10, 10000)
+        self._batch_size.setValue(config.batch_size)
+        agent_form.addRow(
+            create_field_label(
+                "Batch Size:",
+                "Max Emails Per Cycle",
+                "The maximum number of emails to process in a single cycle. Lower this if you have a very large inbox or are experiencing timeouts.",
+            ),
+            self._batch_size,
         )
 
         self._model = QLineEdit(config.model)
@@ -126,16 +150,18 @@ class SettingsTab(QWidget):
         new_config = AgentConfig(
             config_dir=self._config_dir.text().strip(),
             interval=self._interval.value(),
+            poll_interval_mode=self._poll_interval_mode.currentText().lower(),
             dry_run=self._dry_run.isChecked(),
             model=self._model.text().strip(),
             uid_file=self._config.uid_file,
             log_level=self._log_level.currentText(),
+            batch_size=self._batch_size.value(),
         )
         self._config = new_config
         self._apply_log_level(new_config.log_level)
         self.config_changed.emit(new_config)
-        logger.info("Settings applied: interval=%ds, model=%s, dry_run=%s",
-                     new_config.interval, new_config.model, new_config.dry_run)
+        logger.info("Settings applied: interval=%ds, model=%s, dry_run=%s, batch_size=%d",
+                     new_config.interval, new_config.model, new_config.dry_run, new_config.batch_size)
 
     def _apply_log_level(self, level: str):
         logging.getLogger("open_email").setLevel(getattr(logging, level, logging.INFO))

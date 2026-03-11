@@ -87,6 +87,18 @@ class RuleDialog(QDialog):
         self._ai_prompt.setPlaceholderText("AI question about the email")
         layout.addRow(create_field_label("AI Prompt:", "AI Classifier Prompt", "A yes/no question asked to the local AI. If the AI replies 'yes', this condition matches. (e.g. 'Is this an invoice?')"), self._ai_prompt)
 
+        self._days_older = QSpinBox()
+        self._days_older.setRange(0, 999)
+        self._days_older.setValue(0)
+        layout.addRow(
+            create_field_label(
+                "Older Than (Days):",
+                "Older Than (Days)",
+                "Matches if the email was received more than this many days ago. Use 0 to disable.",
+            ),
+            self._days_older,
+        )
+
         # Action fields
         layout.addRow(QLabel("<b>--- Actions ---</b>"))
         self._move_to = QLineEdit()
@@ -121,6 +133,7 @@ class RuleDialog(QDialog):
             self._subject.setText(self._val_to_str(match.get("subject", "")))
             self._body.setText(self._val_to_str(match.get("body", "")))
             self._ai_prompt.setText(match.get("ai_prompt", ""))
+            self._days_older.setValue(match.get("days_older", 0))
 
             action = rule.get("action", {})
             self._move_to.setText(action.get("move_to", ""))
@@ -196,6 +209,8 @@ class RuleDialog(QDialog):
                 match[key] = val
         if self._ai_prompt.text().strip():
             match["ai_prompt"] = self._ai_prompt.text().strip()
+        if self._days_older.value() > 0:
+            match["days_older"] = self._days_older.value()
 
         action = {}
         if self._move_to.text().strip():

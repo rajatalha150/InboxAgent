@@ -21,8 +21,11 @@ logger = logging.getLogger("open_email")
 @dataclass
 class AgentConfig:
     """Configuration for the agent core."""
+
     config_dir: str = "config"
     interval: int = 60
+    batch_size: int = 1000
+    poll_interval_mode: str = "fixed"  # fixed, dynamic, aggressive
     dry_run: bool = False
     model: str = "llama3.2:3b"
     uid_file: str = "processed_uids.json"
@@ -184,8 +187,11 @@ class AgentCore:
                 self.stats.cycles_completed += 1
                 self._emit_stats()
 
+                # Dynamic sleep interval
+                interval = self._get_current_interval()
+
                 # Wait for next poll (check stop every second)
-                for _ in range(self.config.interval):
+                for _ in range(interval):
                     if self._stop_event.is_set():
                         break
                     time.sleep(1)
@@ -196,6 +202,22 @@ class AgentCore:
             self._emit_state(AgentState.STOPPED)
             self._emit_stats()
             logger.info("Agent stopped.")
+
+    def _get_current_interval(self) -> int:
+        """Return the sleep interval based on the current mode and time."""
+        mode = self.config.poll_interval_mode
+        if mode == "aggressive":
+            return 15  # Very frequent
+
+        if mode == "dynamic":
+            now = datetime.now()
+            # Business hours (8am - 6pm)
+            if 8 <= now.hour < 18:
+                return 60  # Frequent
+            return 600  # Infrequent
+
+        # Fixed mode
+        return self.config.interval
 
     def _process_account(
         self,
@@ -223,7 +245,11 @@ class AgentCore:
 
         logger.info("[%s] Found %d new email(s)", client.name, len(new_uids))
 
-        for uid in new_uids:
+        # Limit to batch size
+        uids_to_process = new_uids[: self.config.batch_size]
+        logger.info("Processing next batch of %d email(s)", len(uids_to_process))
+
+        for uid in uids_to_process:
             if self._stop_event.is_set():
                 break
             try:

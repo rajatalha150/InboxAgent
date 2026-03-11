@@ -8,7 +8,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 REQUIRED_ACCOUNT_FIELDS = {"name", "imap_server", "email", "password"}
-VALID_MATCH_FIELDS = {"from", "to", "subject", "body", "ai_prompt"}
+VALID_MATCH_FIELDS = {"from", "to", "subject", "body", "ai_prompt", "days_older"}
 VALID_ACTION_FIELDS = {"move_to", "flag", "delete", "mark_read", "mark_unread", "label", "auto_sort_by_sender"}
 
 

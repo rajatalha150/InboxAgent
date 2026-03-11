@@ -84,6 +84,10 @@ def main():
         help="Logging level (default: INFO)",
     )
     parser.add_argument(
+        "--batch-size", type=int, default=1000,
+        help="Maximum number of emails to process per cycle (default: 1000)",
+    )
+    parser.add_argument(
         "--gui", action="store_true",
         help="Launch the desktop GUI instead of CLI mode",
     )
@@ -110,6 +114,7 @@ def main():
         model=args.model,
         uid_file=args.uid_file,
         log_level=args.log_level,
+        batch_size=args.batch_size,
     )
 
     if args.gui or args.minimized:

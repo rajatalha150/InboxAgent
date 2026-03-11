@@ -115,6 +115,16 @@ def _rule_matches(
     rule_name: str,
 ) -> bool:
     """Check if all conditions in a rule's match section are satisfied (AND logic)."""
+    # Date parsing
+    now = datetime.now(timezone.utc)
+    email_date = None
+    try:
+        email_date = email.utils.parsedate_to_datetime(parsed_email.date)
+        if email_date.tzinfo is None:
+            email_date = email_date.replace(tzinfo=timezone.utc)  # Assume UTC if no timezone
+    except (TypeError, ValueError):
+        logger.warning("Could not parse email date: %s", parsed_email.date)
+
     field_map = {
         "from": parsed_email.from_addr,
         "to": parsed_email.to_addr,
@@ -126,6 +136,12 @@ def _rule_matches(
         if key == "ai_prompt":
             if not _evaluate_ai_condition(parsed_email, patterns, ai_classifier, rule_name):
                 return False
+            continue
+
+        if key == "days_older":
+            if email_date and int(patterns) > 0:
+                if (now - email_date).days < int(patterns):
+                    return False
             continue
 
         field_value = field_map.get(key, "")
