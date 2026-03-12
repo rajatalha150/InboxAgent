@@ -9,13 +9,10 @@
 OutFile "InboxAgent_Setup_0.1.0_x64.exe"
 Name "${APPNAME}"
 InstallDir "$PROGRAMFILES64\${APPNAME}"
+RequestExecutionLevel admin
 
 ; --- Interface Settings ---
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
-!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
-!define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Header\win.bmp"
 
 ; --- Pages ---
 !insertmacro MUI_PAGE_WELCOME
