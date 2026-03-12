@@ -7,3 +7,4 @@ __pycache__/
 .pytest_cache/
 processed_uids.json
 packaging/build/
+build_sys.log
