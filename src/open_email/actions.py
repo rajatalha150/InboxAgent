@@ -6,27 +6,27 @@ logger = logging.getLogger(__name__)
 
 def move_to(client, uid: str, dest_folder: str, dry_run: bool):
     if not dry_run:
-        client.move(uid, dest_folder)
+        client.move_email(uid, dest_folder)
     logger.info("Moved email UID %s to %s", uid, dest_folder)
 
 def flag_email(client, uid: str, dry_run: bool):
     if not dry_run:
-        client.flag(uid)
+        client.flag_email(uid)
     logger.info("Flagged email UID %s", uid)
 
 def delete_email(client, uid: str, dry_run: bool):
     if not dry_run:
-        client.delete(uid)
+        client.delete_email(uid)
     logger.info("Deleted email UID %s", uid)
 
 def mark_as_read(client, uid: str, dry_run: bool):
     if not dry_run:
-        client.mark_as_read(uid)
+        client.mark_read(uid)
     logger.info("Marked email UID %s as read", uid)
 
 def mark_as_unread(client, uid: str, dry_run: bool):
     if not dry_run:
-        client.mark_as_unread(uid)
+        client.mark_unread(uid)
     logger.info("Marked email UID %s as unread", uid)
 
 def add_label(client, uid: str, label: str, dry_run: bool):
