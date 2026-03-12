@@ -42,7 +42,8 @@ Everything runs on your own machine. Your email credentials and message content 
 - **Pattern matching** — filter by sender, recipient, subject keywords, or body text.
 - **Local AI classification** — ask natural-language questions about emails using Ollama (optional).
 - **Rich set of actions** — move to folders, flag, delete, mark read/unread, add Gmail labels, or auto-sort by sender.
-- **Premium Dark Theme Desktop GUI** — a sleek graphical interface with a dashboard, live activity feed, account management, rule editor, logs, built-in tooltips (`?`), and settings.
+- **Premium Dark Theme Desktop GUI** — a sleek graphical interface with a dashboard, live activity feed, account management, rule editor, session logs, built-in tooltips (`?`), and settings.
+- **Cycle Summaries** — detailed text-based log summaries of polling sessions with process stats.
 - **Command-line mode** — run headless on a server or in the background.
 - **System tray integration** — minimizes to your system tray and runs quietly.
 - **Dry-run mode** — test your rules without making any changes.
@@ -319,6 +320,9 @@ The GUI has five tabs:
 ### Dashboard
 The main control center. Shows the agent's current status (Stopped, Starting, Running, Error), live statistics (accounts connected, emails processed, rules triggered, errors, cycles completed), and a real-time activity feed. Start and stop the agent from here.
 
+### Activity
+A dedicated tab to view, refresh, and clear dynamically generated cycle summaries from the agent's background executions. Select a summary to view in-depth details about uptime, emails scanned, and rule occurrences.
+
 ### Accounts
 View and manage your configured email accounts.
 
@@ -460,6 +464,7 @@ Here is what happens when InboxAgent runs:
 │  - Dashboard           │  - Blocking loop               │
 │  - Accounts tab        │  - Signal handling              │
 │  - Rules tab           │  - Logging to stdout            │
+│  - Activity tab        │                                │
 │  - Logs tab            │                                │
 │  - Settings tab        │                                │
 │  - System tray         │                                │
@@ -542,6 +547,7 @@ src/open_email/
     ├── agent_thread.py  # QThread wrapper for agent core
     ├── tabs/
     │   ├── dashboard.py # Status, stats, activity feed
+    │   ├── activity.py  # Cycle summaries layout
     │   ├── accounts.py  # Account management
     │   ├── rules.py     # Rule management
     │   ├── logs.py      # Live log viewer

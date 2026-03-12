@@ -12,10 +12,10 @@
 - **Powerful Action Engine:** Move, flag, label, mark as read, delete, or dynamically auto-sort emails into folders.
 - **Universal Provider Support:** Connects securely to Google Workspace, Microsoft Outlook, Yahoo, Fastmail, or any generic IMAP service.
 - **Premium Dark Theme UI:** Manage rules, view logs, and track statistics in a sleek, customizable desktop dashboard.
+- **Cycle Summaries:** Generates detailed text-based log summaries of every polling session, complete with cycle stats and processed action counts.
 - **Privacy by Design:** Everything runs securely on your own machine. Zero cloud telemetry.
 
-### Future Features
-- **Cycle Summaries (NLG):** Implement a basic Natural Language Generation (NLG) system to create more human-like, paragraph-style summaries of each processing cycle.
+
 
 ## Installation
 
