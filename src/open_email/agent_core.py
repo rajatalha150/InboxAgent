@@ -216,8 +216,8 @@ class AgentCore:
                 self._emit_stats()
 
                 # Generate and save summary
-                if self.stats.actions_taken:
-                    summary_text = summary.generate_summary(self.stats.actions_taken)
+                if self.stats.actions_taken or self.stats.emails_processed > 0:
+                    summary_text = summary.generate_summary(self.stats)
                     self._save_summary(summary_text)
                     self.stats.actions_taken.clear()
 
