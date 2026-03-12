@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 
+from open_email.agent_core import AgentCore
+
 class ActivityTab(QWidget):
     """Panel for viewing cycle summaries."""
 

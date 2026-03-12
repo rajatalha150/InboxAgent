@@ -38,7 +38,7 @@ def load_accounts(path: Path) -> list[dict]:
     """Load and validate accounts configuration."""
     data = load_yaml(path)
     accounts = data.get("accounts")
-    if not accounts or not isinstance(accounts, list):
+    if accounts is None or not isinstance(accounts, list):
         raise ValueError(f"No 'accounts' list found in {path}")
 
     validated = []
@@ -64,7 +64,7 @@ def load_rules(path: Path) -> list[dict]:
     """Load and validate rules configuration."""
     data = load_yaml(path)
     rules = data.get("rules")
-    if not rules or not isinstance(rules, list):
+    if rules is None or not isinstance(rules, list):
         raise ValueError(f"No 'rules' list found in {path}")
 
     validated = []

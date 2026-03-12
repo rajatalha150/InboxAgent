@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from open_email.agent_core import AgentConfig
+from open_email.agent_core import AgentConfig, AgentCore, AgentState
 from open_email.config_loader import load_rules, save_rules
 from open_email.gui.widgets.ui_helpers import create_field_label
 

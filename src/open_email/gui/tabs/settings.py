@@ -1,14 +1,16 @@
 """Settings tab: poll interval, model, dry-run, log level, auto-start."""
 
+import json
 import logging
+from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QLabel,
-    QLineEdit, QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QLineEdit, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
-from open_email.agent_core import AgentConfig
+from open_email.agent_core import AgentConfig, AgentCore
 from open_email.gui.widgets.ui_helpers import create_field_label
 
 logger = logging.getLogger("open_email")

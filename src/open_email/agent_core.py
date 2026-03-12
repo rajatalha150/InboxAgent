@@ -6,6 +6,7 @@ import threading
 import time
 import traceback
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from open_email.actions import execute_actions
@@ -42,6 +43,8 @@ class AgentStats:
     cycles_completed: int = 0
     emails_processed: int = 0
     errors: int = 0
+    accounts_connected: int = 0
+    rules_triggered: int = 0
     actions_taken: list[str] = field(default_factory=list)
 
     @property

@@ -1,7 +1,9 @@
 """Rule engine: evaluate email rules against parsed emails."""
 
+import email.utils
 import fnmatch
 import logging
+from datetime import datetime, timezone
 
 from open_email.email_parser import ParsedEmail
 
