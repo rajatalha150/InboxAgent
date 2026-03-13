@@ -16,6 +16,7 @@ from open_email.gui.widgets.ui_helpers import create_field_label
 COLUMNS = ["Name", "Match", "Action"]
 AUTO_SORT_RULE_NAME = "auto-sort-by-sender"
 CONTENT_RULES_NAME = "content-based-rules"
+OFFICE_RULES_NAME = "office-based-rules"
 
 
 def _summarize_match(match: dict) -> str:
@@ -338,6 +339,87 @@ class ContentRulesConfigDialog(QDialog):
             }
         return config
 
+class OfficeRulesConfigDialog(QDialog):
+    """Dialog for configuring office-based rules."""
+    def __init__(self, current_config, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configure Office-Based Rules")
+        self.setMinimumWidth(500)
+        
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        
+        self.rules = {
+            "Meeting Prep": {
+                "subject": ["meeting", "agenda", "calendar", "sync", "standup", "huddle"],
+                "body": ["please find the agenda", "zoom.us/j", "meet.google.com"]
+            },
+            "Client Follow-ups": {
+                "subject": ["checking in", "following up", "status update"]
+            },
+            "Team Collaboration": {
+                "subject": ["team", "collab", "brainstorm", "project sync"]
+            },
+            "Expense / Finance": {
+                "subject": ["invoice", "receipt", "payment", "reimbursement", "expense"]
+            },
+            "Urgent Deadlines": {
+                "subject": ["due today", "immediate", "urgent", "action required", "eod", "asap"]
+            },
+            "Recurring Reports": {
+                "subject": ["weekly report", "monthly report", "analytics summary"]
+            },
+            "Internal Memos": {
+                "subject": ["all-hands", "company update", "policy change", "memo"]
+            },
+            "Low Priority Notifications": {
+                "subject": ["system update", "maintenance", "alert"]
+            },
+            "Follow-up Chains": {
+                "subject": ["re:"]
+            },
+            "Flag Unusual Sender": {
+                "subject": ["introduction", "new contact"]
+            }
+        }
+        
+        self.widgets = {}
+        for rule_name, conditions in self.rules.items():
+            rule_config = current_config.get(rule_name, {})
+            enabled = rule_config.get("enabled", False)
+            keywords = rule_config.get("keywords", {})
+            
+            enable_checkbox = QCheckBox(f"Enable {rule_name} Rule")
+            enable_checkbox.setChecked(enabled)
+            form.addRow(enable_checkbox)
+            self.widgets[rule_name] = {"enabled": enable_checkbox, "keywords": {}}
+            for condition, default_keywords in conditions.items():
+                current_keywords = keywords.get(condition, default_keywords)
+                keyword_edit = QLineEdit(", ".join(current_keywords))
+                form.addRow(f"    {condition.capitalize()} Keywords:", keyword_edit)
+                self.widgets[rule_name]["keywords"][condition] = keyword_edit
+        
+        layout.addLayout(form)
+        
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        config = {}
+        for rule_name, widgets in self.widgets.items():
+            config[rule_name] = {
+                "enabled": widgets["enabled"].isChecked(),
+                "keywords": {
+                    condition: [kw.strip() for kw in widget.text().split(",") if kw.strip()]
+                    for condition, widget in widgets["keywords"].items()
+                }
+            }
+        return config
+
 class RulesTab(QWidget):
     """CRUD table for email rules."""
 
@@ -347,6 +429,7 @@ class RulesTab(QWidget):
         self._rules_path = Path(self._agent_core.config.config_dir) / "rules.yaml"
         self._rules: list[dict] = []
         self._current_content_rules_config = {}
+        self._current_office_rules_config = {}
 
         layout = QVBoxLayout(self)
 
@@ -417,6 +500,36 @@ class RulesTab(QWidget):
 
         layout.addWidget(content_rules_frame)
 
+        # Office-based rules panel
+        office_rules_frame = QFrame()
+        office_rules_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        office_rules_frame.setStyleSheet(
+            "QFrame { background-color: #1e1e1e; border: 1px solid #333333;"
+            " border-radius: 6px; padding: 8px; }"
+        )
+        office_rules_layout = QVBoxLayout(office_rules_frame)
+        office_rules_layout.setContentsMargins(10, 8, 10, 8)
+
+        office_header_row = QHBoxLayout()
+        office_rules_label = QLabel("<b>Office-Based Rules</b>")
+        office_header_row.addWidget(office_rules_label)
+        office_header_row.addStretch()
+
+        self._office_rules_config_btn = QPushButton("Configure")
+        self._office_rules_config_btn.clicked.connect(self._configure_office_rules)
+        office_header_row.addWidget(self._office_rules_config_btn)
+
+        office_rules_layout.addLayout(office_header_row)
+
+        office_desc = QLabel(
+            "Enable and configure pre-defined workspace rules for business workflow like Meeting Prep, Financials, and Urgent Deadlines."
+        )
+        office_desc.setWordWrap(True)
+        office_desc.setStyleSheet("color: #a0a0a0; font-size: 13px;")
+        office_rules_layout.addWidget(office_desc)
+
+        layout.addWidget(office_rules_frame)
+
         # Toolbar
         toolbar = QHBoxLayout()
         add_btn = QPushButton("Add Rule")
@@ -460,6 +573,8 @@ class RulesTab(QWidget):
                 self._current_auto_sort_config = r.get("action", {}).get("auto_sort_by_sender", True)
             elif r["name"] == CONTENT_RULES_NAME:
                 self._current_content_rules_config = r.get("action", {}).get("content_based_rules", {})
+            elif r["name"] == OFFICE_RULES_NAME:
+                self._current_office_rules_config = r.get("action", {}).get("office_based_rules", {})
 
         if not hasattr(self, '_current_auto_sort_config'):
             self._current_auto_sort_config = True
@@ -490,9 +605,16 @@ class RulesTab(QWidget):
             self._save()
             self._refresh_table()
 
+    def _configure_office_rules(self):
+        dlg = OfficeRulesConfigDialog(self._current_office_rules_config, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._current_office_rules_config = dlg.get_config()
+            self._save()
+            self._refresh_table()
+
     def _user_rules(self) -> list[dict]:
         """Return rules excluding the auto-sort rule."""
-        return [r for r in self._rules if r["name"] not in (AUTO_SORT_RULE_NAME, CONTENT_RULES_NAME)]
+        return [r for r in self._rules if r["name"] not in (AUTO_SORT_RULE_NAME, CONTENT_RULES_NAME, OFFICE_RULES_NAME)]
 
     def _refresh_table(self):
         visible = self._user_rules()
@@ -505,16 +627,28 @@ class RulesTab(QWidget):
     def _save(self):
         # Update content-based rules
         content_rule_found = False
+        office_rule_found = False
+        
         for r in self._rules:
             if r["name"] == CONTENT_RULES_NAME:
                 r["action"]["content_based_rules"] = self._current_content_rules_config
                 content_rule_found = True
-                break
+            elif r["name"] == OFFICE_RULES_NAME:
+                r["action"]["office_based_rules"] = self._current_office_rules_config
+                office_rule_found = True
+
         if not content_rule_found and self._current_content_rules_config:
             self._rules.append({
                 "name": CONTENT_RULES_NAME,
                 "match": {},
                 "action": {"content_based_rules": self._current_content_rules_config}
+            })
+            
+        if not office_rule_found and self._current_office_rules_config:
+            self._rules.append({
+                "name": OFFICE_RULES_NAME,
+                "match": {},
+                "action": {"office_based_rules": self._current_office_rules_config}
             })
         
         save_rules(self._rules_path, self._rules)

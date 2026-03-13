@@ -49,9 +49,10 @@ def evaluate_rules(
     matches = []
 
     # Separate rules for prioritized execution
-    custom_rules = [r for r in rules if r["name"] not in ("auto-sort-by-sender", "content-based-rules")]
+    custom_rules = [r for r in rules if r["name"] not in ("auto-sort-by-sender", "content-based-rules", "office-based-rules")]
     auto_sort_rule = next((r for r in rules if r["name"] == "auto-sort-by-sender"), None)
     content_rules_container = next((r for r in rules if r["name"] == "content-based-rules"), None)
+    office_rules_container = next((r for r in rules if r["name"] == "office-based-rules"), None)
 
     # 1. Custom rules take highest priority
     for rule in custom_rules:
@@ -64,21 +65,74 @@ def evaluate_rules(
     # If any custom rules matched, they take precedence and we're done.
     if matches:
         return matches
+        
+    # 2. Office-based rules are next
+    if office_rules_container:
+        office_based_rules = office_rules_container.get("action", {}).get("office_based_rules", {})
+        office_matches = _evaluate_office_based_rules(parsed_email, office_based_rules)
+        if office_matches:
+            return office_matches
 
-    # 2. Content-based rules are next (only if no custom rules matched)
+    # 3. Content-based rules are next
     if content_rules_container:
         content_based_rules = content_rules_container.get("action", {}).get("content_based_rules", {})
         content_matches = _evaluate_content_based_rules(parsed_email, content_based_rules)
         if content_matches:
             return content_matches
 
-    # 3. Auto-sort is the final catch-all (only if nothing else matched)
+    # 4. Auto-sort is the final catch-all (only if nothing else matched)
     if auto_sort_rule:
         if _rule_matches(parsed_email, auto_sort_rule["match"], ai_classifier, auto_sort_rule["name"]):
             logger.info("Rule '%s' matched email UID %d (subject: %s)", auto_sort_rule["name"], parsed_email.uid, parsed_email.subject)
             matches.append({"name": auto_sort_rule["name"], "action": auto_sort_rule["action"]})
             return matches
 
+    return matches
+
+def _evaluate_office_based_rules(parsed_email: ParsedEmail, config: dict) -> list[dict]:
+    """Evaluate office-based rules and return actions for matching rules."""
+    matches = []
+    for rule_name, rule_config in config.items():
+        if not rule_config.get("enabled", False):
+            continue
+
+        keywords = rule_config.get("keywords", {})
+        for condition, kws in keywords.items():
+            field_value = ""
+            if condition == "from":
+                field_value = parsed_email.from_addr
+            elif condition == "subject":
+                field_value = parsed_email.subject
+            elif condition == "body":
+                field_value = parsed_email.body_text
+
+            if field_value and _match_field(kws, field_value):
+                action = {}
+                if rule_name == "Meeting Prep":
+                    action["move_to"] = "Meetings"
+                elif rule_name == "Client Follow-ups":
+                    action["flag"] = True
+                elif rule_name == "Team Collaboration":
+                    action["label"] = "Team"
+                elif rule_name == "Expense / Finance":
+                    action["move_to"] = "Finance"
+                elif rule_name == "Urgent Deadlines":
+                    action["flag"] = True
+                elif rule_name == "Recurring Reports":
+                    action["label"] = "Reports"
+                elif rule_name == "Internal Memos":
+                    action["move_to"] = "Internal"
+                elif rule_name == "Low Priority Notifications":
+                    action["move_to"] = "Notifications"
+                elif rule_name == "Follow-up Chains":
+                    action["flag"] = True
+                elif rule_name == "Flag Unusual Sender":
+                    action["move_to"] = "Verify Sender"
+                
+                if action:
+                    logger.info("Office-based rule '%s' matched email UID %d (subject: %s)", rule_name, parsed_email.uid, parsed_email.subject)
+                    matches.append({"name": f"office-based: {rule_name}", "action": action})
+                    return matches
     return matches
 
 def _evaluate_content_based_rules(parsed_email: ParsedEmail, config: dict) -> list[dict]:
