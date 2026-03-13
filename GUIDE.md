@@ -477,7 +477,10 @@ Here is what happens when InboxAgent runs:
 
 ### "No accounts connected successfully"
 - Check that your IMAP server address and port are correct.
-- For Gmail, make sure you are using an App Password, not your regular password.
+- If using 2FA, **you must use an App Password, not your regular password**. 
+  - [How to create a Gmail App Password](https://support.google.com/accounts/answer/185833)
+  - [How to create an Outlook App Password](https://support.microsoft.com/en-us/account-billing/manage-app-passwords-for-two-step-verification-d6dc8c6d-4bf7-4851-ad95-6d07799387e9)
+  - [How to create a Yahoo App Password](https://help.yahoo.com/kb/generate-and-manage-third-party-app-passwords-sln15241.html)
 - Make sure "IMAP access" is enabled in your email provider's settings.
 - Check your firewall — port 993 (IMAP over SSL) must be open.
 
