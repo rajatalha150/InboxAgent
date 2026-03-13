@@ -42,6 +42,8 @@ class InfoButton(QPushButton):
         msg.setWindowTitle(self.title)
         msg.setText(f"<b>{self.title}</b>")
         msg.setInformativeText(self.text_content)
+        msg.setTextFormat(Qt.TextFormat.RichText)
+        msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         msg.setIcon(QMessageBox.Icon.Information)
         msg.setStyleSheet("""
             QMessageBox {

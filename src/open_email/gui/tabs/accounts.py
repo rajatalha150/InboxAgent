@@ -42,7 +42,15 @@ class AccountDialog(QDialog):
 
         self._password = QLineEdit(account.get("password", "") if account else "")
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addRow(create_field_label("Password:", "Password / App Password", "If using 2FA on Gmail, Outlook, or Yahoo, you must generate a special 'App Password' rather than providing your main login password."), self._password)
+        
+        app_pw_help = (
+            "If using 2FA on Gmail, Outlook, or Yahoo, you must generate a special 'App Password' rather than providing your main login password.<br><br>"
+            "<b>Setup Guides:</b><br>"
+            "• <a href='https://support.google.com/accounts/answer/185833' style='color:#3a82f7;'>Gmail App Passwords</a><br>"
+            "• <a href='https://support.microsoft.com/en-us/account-billing/manage-app-passwords-for-two-step-verification-d6dc8c6d-4bf7-4851-ad95-6d07799387e9' style='color:#3a82f7;'>Outlook App Passwords</a><br>"
+            "• <a href='https://help.yahoo.com/kb/generate-and-manage-third-party-app-passwords-sln15241.html' style='color:#3a82f7;'>Yahoo App Passwords</a>"
+        )
+        layout.addRow(create_field_label("Password:", "Password / App Password", app_pw_help), self._password)
 
         self._ssl = QCheckBox()
         self._ssl.setChecked(account.get("ssl", True) if account else True)
