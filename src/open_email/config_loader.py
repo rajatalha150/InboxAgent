@@ -9,7 +9,10 @@ logger = logging.getLogger(__name__)
 
 REQUIRED_ACCOUNT_FIELDS = {"name", "imap_server", "email", "password"}
 VALID_MATCH_FIELDS = {"from", "to", "subject", "body", "ai_prompt", "days_older"}
-VALID_ACTION_FIELDS = {"move_to", "flag", "delete", "mark_read", "mark_unread", "label", "auto_sort_by_sender"}
+VALID_ACTION_FIELDS = {
+    "move_to", "flag", "delete", "mark_read", "mark_unread", "label", 
+    "auto_sort_by_sender", "content_based_rules", "office_based_rules"
+}
 
 
 def load_yaml(path: Path) -> dict:
@@ -72,7 +75,7 @@ def load_rules(path: Path) -> list[dict]:
         name = rule.get("name", f"rule-{i + 1}")
 
         # Skip validation for special meta-rules
-        if name in ("content-based-rules",):
+        if name in ("content-based-rules", "office-based-rules"):
             validated.append(rule)
             continue
 
