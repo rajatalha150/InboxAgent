@@ -46,6 +46,7 @@ class AgentStats:
     accounts_connected: int = 0
     rules_triggered: int = 0
     actions_taken: list[str] = field(default_factory=list)
+    rules_triggered_this_cycle: dict[str, int] = field(default_factory=dict)
 
     @property
     def uptime(self) -> str:
@@ -217,9 +218,10 @@ class AgentCore:
 
                 # Generate and save summary
                 if self.stats.actions_taken or self.stats.emails_processed > 0:
-                    summary_text = summary.generate_summary(self.stats)
+                    summary_text = summary.generate_summary(self.stats, rules)
                     self._save_summary(summary_text)
                     self.stats.actions_taken.clear()
+                    self.stats.rules_triggered_this_cycle.clear()
 
                 # Dynamic sleep interval
                 interval = self._get_current_interval()
@@ -297,10 +299,12 @@ class AgentCore:
 
                 if matches:
                     for match in matches:
-                        rule_msg = f"[{client.name}] Rule '{match['name']}' triggered for UID {uid}"
+                        rule_name = match['name']
+                        rule_msg = f"[{client.name}] Rule '{rule_name}' triggered for UID {uid}"
                         logger.info(rule_msg)
                         self._emit_activity(rule_msg)
                         self.stats.rules_triggered += 1
+                        self.stats.rules_triggered_this_cycle[rule_name] = self.stats.rules_triggered_this_cycle.get(rule_name, 0) + 1
                         execute_actions(
                             client, uid, match["action"],
                             dry_run=self.config.dry_run,
